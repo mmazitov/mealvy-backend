@@ -6,24 +6,22 @@ export const plannerTypeDefs = gql`
 		userId: ID!
 		dishId: ID!
 		dish: Dish!
-		day: String!
+		date: String!
 		mealTime: String!
-		weekStart: String!
 		createdAt: String!
 	}
 
 	input PlannerItemInput {
 		dishId: ID!
-		day: String!
+		date: String!
 		mealTime: String!
-		weekStart: String!
 	}
 
 	extend type Query {
-		getPlannerItems(weekStart: String!): [PlannerItem!]!
+		getPlannerItems(startDate: String!, endDate: String!): [PlannerItem!]!
 	}
 
 	extend type Mutation {
-		savePlanner(items: [PlannerItemInput!]!, weekStart: String!): Boolean!
+		savePlanner(items: [PlannerItemInput!]!, startDate: String!, endDate: String!): Boolean!
 	}
 `;

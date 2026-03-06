@@ -2,7 +2,7 @@ import { Context } from '../context.js';
 
 export const isAdmin = async (userId: string, prisma: Context['prisma']) => {
 	const user = await prisma.user.findUnique({ where: { id: userId } });
-	return user?.role === 'admin';
+	return user?.role === 'ADMIN';
 };
 
 export const requireAuth = (context: Context): string => {
