@@ -3,12 +3,12 @@ export const plannerResolvers = {
 	Query: {
 		getPlannerItems: async (
 			_: any,
-			__: any,
+			{ weekStart }: { weekStart: string },
 			{ userId, prisma }: Context,
 		) => {
 			if (!userId) throw new Error('Not authenticated');
 			return prisma.plannerItem.findMany({
-				where: { userId },
+				where: { userId, weekStart },
 				include: { dish: true },
 			});
 		},
@@ -17,14 +17,14 @@ export const plannerResolvers = {
 	Mutation: {
 		savePlanner: async (
 			_: any,
-			{ items }: { items: { dishId: string; day: string; mealTime: string }[] },
+			{ items, weekStart }: { items: { dishId: string; day: string; mealTime: string; weekStart: string }[], weekStart: string },
 			{ userId, prisma }: Context,
 		) => {
 			if (!userId) throw new Error('Not authenticated');
 
-			// Delete existing items for the user
+			// Delete existing items for the user for the specific week
 			await prisma.plannerItem.deleteMany({
-				where: { userId },
+				where: { userId, weekStart },
 			});
 
 			// Create new items concurrently
@@ -35,6 +35,7 @@ export const plannerResolvers = {
 					dishId: item.dishId,
 					day: item.day,
 					mealTime: item.mealTime,
+					weekStart,
 				}));
 
 				await prisma.plannerItem.createMany({

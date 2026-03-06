@@ -8,6 +8,7 @@ export const plannerTypeDefs = gql`
 		dish: Dish!
 		day: String!
 		mealTime: String!
+		weekStart: String!
 		createdAt: String!
 	}
 
@@ -15,13 +16,14 @@ export const plannerTypeDefs = gql`
 		dishId: ID!
 		day: String!
 		mealTime: String!
+		weekStart: String!
 	}
 
 	extend type Query {
-		getPlannerItems: [PlannerItem!]!
+		getPlannerItems(weekStart: String!): [PlannerItem!]!
 	}
 
 	extend type Mutation {
-		savePlanner(items: [PlannerItemInput!]!): Boolean!
+		savePlanner(items: [PlannerItemInput!]!, weekStart: String!): Boolean!
 	}
 `;
