@@ -1,20 +1,28 @@
 import { gql } from 'graphql-tag';
 
 export const plannerTypeDefs = gql`
+	enum MealTime {
+		BREAKFAST
+		LUNCH
+		DINNER
+		SNACK
+	}
+
 	type PlannerItem {
 		id: ID!
 		userId: ID!
 		dishId: ID!
 		dish: Dish!
 		date: String!
-		mealTime: String!
+		mealTime: MealTime!
 		createdAt: String!
 	}
 
 	input PlannerItemInput {
+		id: ID
 		dishId: ID!
 		date: String!
-		mealTime: String!
+		mealTime: MealTime!
 	}
 
 	extend type Query {

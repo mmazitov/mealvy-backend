@@ -4,6 +4,45 @@ import { Strategy as GitHubStrategy } from 'passport-github2';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { prisma } from '../context.js';
 
+async function findOrCreateUserFromOAuth(
+	provider: string,
+	profileId: string,
+	profile: { emails?: { value: string }[], displayName?: string, username?: string, photos?: { value: string }[] }
+) {
+	let account = await prisma.account.findUnique({
+		where: { provider_providerAccountId: { provider, providerAccountId: profileId } },
+		include: { user: true },
+	});
+
+	if (account) return account.user;
+
+	let user;
+	if (profile.emails?.[0]?.value) {
+		user = await prisma.user.findUnique({ where: { email: profile.emails[0].value } });
+	}
+
+	if (!user) {
+		user = await prisma.user.create({
+			data: {
+				email: profile.emails?.[0]?.value,
+				name: profile.displayName || profile.username,
+				...(profile.photos?.[0]?.value && {
+					avatar: profile.photos[0].value,
+				}),
+			},
+		});
+	}
+
+	await prisma.account.create({
+		data: {
+			userId: user.id,
+			provider,
+			providerAccountId: profileId,
+		},
+	});
+
+	return user;
+}
 passport.use(
 	new GoogleStrategy(
 		{
@@ -15,23 +54,7 @@ passport.use(
 		},
 		async (accessToken, refreshToken, profile, done) => {
 			try {
-				let user = await prisma.user.findFirst({
-					where: { googleId: profile.id },
-				});
-
-				if (!user) {
-					user = await prisma.user.create({
-						data: {
-							googleId: profile.id,
-							email: profile.emails?.[0]?.value,
-							name: profile.displayName,
-							...(profile.photos?.[0]?.value && {
-								avatar: profile.photos[0].value,
-							}),
-						},
-					});
-				}
-
+				const user = await findOrCreateUserFromOAuth('google', profile.id, profile);
 				return done(null, user);
 			} catch (error) {
 				return done(error);
@@ -56,23 +79,7 @@ passport.use(
 			done: any,
 		) => {
 			try {
-				let user = await prisma.user.findFirst({
-					where: { githubId: profile.id.toString() },
-				});
-
-				if (!user) {
-					user = await prisma.user.create({
-						data: {
-							githubId: profile.id.toString(),
-							email: profile.emails?.[0]?.value,
-							name: profile.displayName || profile.username,
-							...(profile.photos?.[0]?.value && {
-								avatar: profile.photos[0].value,
-							}),
-						},
-					});
-				}
-
+				const user = await findOrCreateUserFromOAuth('github', profile.id.toString(), profile);
 				return done(null, user);
 			} catch (error) {
 				return done(error);
@@ -93,23 +100,7 @@ passport.use(
 		},
 		async (accessToken, refreshToken, profile, done) => {
 			try {
-				let user = await prisma.user.findFirst({
-					where: { facebookId: profile.id },
-				});
-
-				if (!user) {
-					user = await prisma.user.create({
-						data: {
-							facebookId: profile.id,
-							email: profile.emails?.[0]?.value,
-							name: profile.displayName,
-							...(profile.photos?.[0]?.value && {
-								avatar: profile.photos[0].value,
-							}),
-						},
-					});
-				}
-
+				const user = await findOrCreateUserFromOAuth('facebook', profile.id, profile);
 				return done(null, user);
 			} catch (error) {
 				return done(error);

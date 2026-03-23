@@ -11,8 +11,9 @@ datasource db {
 }
 
 type Ingredient {
-  name   String
-  amount String
+  name      String
+  amount    String
+  productId String? @db.ObjectId
 }
 
 model Dish {
@@ -64,10 +65,7 @@ model User {
   phone              String?
   avatar             String?
   role               Role          @default(USER)
-  // Auth provider
-  googleId           String?
-  facebookId         String?
-  githubId           String?
+  accounts           Account[]
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   diet               String?
@@ -89,8 +87,25 @@ model PlannerItem {
   dishId    String   @db.ObjectId
   dish      Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
   date      DateTime
-  mealTime  String
+  mealTime  MealTime
   createdAt DateTime @default(now())
+}
+
+enum MealTime {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  provider          String
+  providerAccountId String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
 enum Role {

@@ -4,11 +4,13 @@ export const dishTypeDefs = gql`
 	type Ingredient {
 		name: String!
 		amount: String!
+		productId: ID
 	}
 
 	input IngredientInput {
 		name: String!
 		amount: String!
+		productId: ID
 	}
 
 	type Dish {

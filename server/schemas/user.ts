@@ -11,9 +11,6 @@ export const userTypeDefs = gql`
 		diet: String
 		allergy: [String!]!
 		dislike: [String!]!
-		googleId: String
-		githubId: String
-		facebookId: String
 		createdAt: String!
 		updatedAt: String!
 		favoriteProducts: [Product!]!

@@ -73,7 +73,7 @@ export const dishResolvers = {
 				name: string;
 				category?: string;
 				imageUrl?: string;
-				ingredients: Array<{ name: string; amount: string }>;
+				ingredients: Array<{ name: string; amount: string; productId?: string }>;
 				instructions: string[];
 				prepTime?: number;
 				servings?: number;
@@ -103,7 +103,7 @@ export const dishResolvers = {
 				name?: string;
 				category?: string;
 				imageUrl?: string;
-				ingredients?: Array<{ name: string; amount: string }>;
+				ingredients?: Array<{ name: string; amount: string; productId?: string }>;
 				instructions?: string[];
 				prepTime?: number;
 				servings?: number;
