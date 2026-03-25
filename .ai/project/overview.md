@@ -1,8 +1,8 @@
-# Forksy Backend – Project Review
+# Mealvy Backend – Project Review
 
 ## Overview
 
-Forksy Backend is a Node.js API built with Apollo Server (GraphQL), Express, Prisma ORM, and TypeScript. It serves as the data layer for the Forksy Frontend, handling authentication, user management, and product/dish data for the food-tracking application.
+Mealvy Backend is a Node.js API built with Apollo Server (GraphQL), Express, Prisma ORM, and TypeScript. It serves as the data layer for the Mealvy Frontend, handling authentication, user management, and product/dish data for the food-tracking application.
 
 ---
 

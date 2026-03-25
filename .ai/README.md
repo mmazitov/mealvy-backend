@@ -33,4 +33,4 @@ The script will:
 3.  **MCP**: Define new MCP servers in `mcp/*.json`. Use `__PROJECT_ROOT__` as a placeholder for the absolute path to the project root.
 
 ---
-*Maintained by the Forksy team.*
+*Maintained by the Mealvy team.*

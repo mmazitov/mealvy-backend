@@ -19,7 +19,7 @@ const httpServer = http.createServer(app);
 
 const allowedOrigins = [
 	process.env.CLIENT_URL || 'http://localhost:5173',
-	'https://forksy.vercel.app',
+	'https://mealvy.vercel.app',
 	'http://localhost:5173',
 	'http://localhost:5174',
 	/^https:\/\/.*\.vercel\.app$/,
@@ -76,7 +76,7 @@ app.use(passport.session() as any);
 app.get('/', (req, res) => {
 	res.json({
 		status: 'ok',
-		message: 'Forksy API is running',
+		message: 'Mealvy API is running',
 		endpoints: {
 			graphql: '/graphql',
 			auth: '/auth',
