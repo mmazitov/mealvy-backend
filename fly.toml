@@ -1,16 +1,12 @@
-# fly.toml app configuration file generated for forksy-backend on 2026-01-03T15:21:26+02:00
+# fly.toml app configuration file generated for mealvy-backend on 2026-03-25T12:05:14Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'forksy-backend'
+app = 'mealvy-backend'
 primary_region = 'ams'
 
 [build]
-
-[env]
-  NODE_ENV = 'production'
-  PORT = '8080'
 
 [http_service]
   internal_port = 8080
@@ -20,12 +16,8 @@ primary_region = 'ams'
   min_machines_running = 0
   processes = ['app']
 
-  [http_service.concurrency]
-    type = 'connections'
-    hard_limit = 25
-    soft_limit = 20
-
 [[vm]]
-  memory = '256mb'
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
   memory_mb = 256
