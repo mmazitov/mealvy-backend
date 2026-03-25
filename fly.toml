@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for forksy-backend on 2026-01-03T15:21:26+02:00
+# fly.toml app configuration file generated for mealvy-backend on 2026-01-03T15:21:26+02:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'forksy-backend'
+app = 'mealvy-backend'
 primary_region = 'ams'
 
 [build]

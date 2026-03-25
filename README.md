@@ -1,6 +1,6 @@
-# Forksy Backend API
+# Mealvy Backend API
 
-GraphQL API для Forksy - застосунку для планування меню та управління продуктами.
+GraphQL API для Mealvy - застосунку для планування меню та управління продуктами.
 
 ## Tech Stack
 
@@ -78,14 +78,14 @@ npm start
 ## GraphQL Endpoint
 
 - **Development**: `http://localhost:4000/graphql`
-- **Production**: `https://forksy-api.onrender.com/graphql`
+- **Production**: `https://mealvy-api.onrender.com/graphql`
 
 ## OAuth Callbacks
 
 Переконайся, що в OAuth providers (Google, GitHub, Facebook) додані правильні callback URLs:
 
 - **Development**: `http://localhost:4000/auth/{provider}/callback`
-- **Production**: `https://forksy-api.onrender.com/auth/{provider}/callback`
+- **Production**: `https://mealvy-api.onrender.com/auth/{provider}/callback`
 
 ## Environment Variables
 

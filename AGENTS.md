@@ -1,6 +1,6 @@
-# Agent Instructions for `forksy-backend`
+# Agent Instructions for `mealvy-backend`
 
-You are an AI assistant working on `forksy-backend`, a Node.js / Express / Apollo Server / Prisma application for a food-tracking and meal-planning platform.
+You are an AI assistant working on `mealvy-backend`, a Node.js / Express / Apollo Server / Prisma application for a food-tracking and meal-planning platform.
 
 ## 🚨 CRITICAL: Context Files 🚨
 
