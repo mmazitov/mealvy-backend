@@ -17,6 +17,15 @@ import { typeDefs } from './schema.js';
 const app = express();
 const httpServer = http.createServer(app);
 
+if (process.env.NODE_ENV === 'production') {
+	if (!process.env.JWT_SECRET) {
+		throw new Error('JWT_SECRET environment variable is required in production');
+	}
+	if (!process.env.SESSION_SECRET) {
+		throw new Error('SESSION_SECRET environment variable is required in production');
+	}
+}
+
 const allowedOrigins = [
 	process.env.CLIENT_URL || 'http://localhost:5173',
 	'https://mealvy.vercel.app',
@@ -90,7 +99,7 @@ app.use('/auth', oauthRouter);
 const server = new ApolloServer<Context>({
 	typeDefs,
 	resolvers,
-	introspection: true, // Enable introspection for GraphQL codegen
+	introspection: process.env.NODE_ENV !== 'production',
 	plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
 	validationRules: [depthLimit(7)],
 });

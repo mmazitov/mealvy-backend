@@ -27,7 +27,7 @@ export const createContext = async (contextArg?: any): Promise<Context> => {
 			const cleanToken = token.replace('Bearer ', '').replace('bearer ', '');
 			const decoded = jwt.verify(
 				cleanToken,
-				process.env.JWT_SECRET || 'supersecret',
+				process.env.JWT_SECRET || 'supersecret-dev-only',
 			) as { userId: string };
 			userId = decoded.userId;
 		} catch (e) {
