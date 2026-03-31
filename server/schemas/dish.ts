@@ -5,6 +5,7 @@ export const dishTypeDefs = gql`
 		name: String!
 		amount: String!
 		productId: ID
+		product: Product
 	}
 
 	input IngredientInput {

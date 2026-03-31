@@ -87,6 +87,20 @@ export const dishResolvers = {
 		) => {
 			const userId = requireAuth(context);
 
+			// Validate productIds if provided
+			if (args.ingredients) {
+				for (const ing of args.ingredients) {
+					if (ing.productId) {
+						const product = await context.prisma.product.findUnique({
+							where: { id: ing.productId },
+						});
+						if (!product) {
+							throw new Error(`Product with id ${ing.productId} not found`);
+						}
+					}
+				}
+			}
+
 			const dish = await context.prisma.dish.create({
 				data: {
 					...args,
@@ -133,6 +147,21 @@ export const dishResolvers = {
 			}
 
 			const { id, ...updateData } = args;
+
+			// Validate productIds if provided
+			if (updateData.ingredients) {
+				for (const ing of updateData.ingredients) {
+					if (ing.productId) {
+						const product = await context.prisma.product.findUnique({
+							where: { id: ing.productId },
+						});
+						if (!product) {
+							throw new Error(`Product with id ${ing.productId} not found`);
+						}
+					}
+				}
+			}
+
 			const dish = await context.prisma.dish.update({
 				where: { id },
 				data: updateData,
@@ -187,6 +216,21 @@ export const dishResolvers = {
 			});
 
 			return user?.favoriteDishes.length! > 0;
+		},
+	},
+	Ingredient: {
+		product: async (
+			parent: { productId?: string },
+			_args: unknown,
+			context: Context
+		) => {
+			if (!parent.productId) {
+				return null;
+			}
+
+			return await context.prisma.product.findUnique({
+				where: { id: parent.productId },
+			});
 		},
 	},
 };
