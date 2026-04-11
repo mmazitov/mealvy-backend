@@ -107,7 +107,13 @@ app.post('/auth/refresh', async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, JWT_SECRET) as { userId: string };
+    const payload = jwt.verify(refreshToken, JWT_SECRET) as Record<string, unknown>;
+    if (typeof payload.userId !== 'string') {
+      clearAuthCookies(res);
+      res.status(401).json({ error: 'Invalid token format' });
+      return;
+    }
+    const decoded = payload as { userId: string };
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     if (!user) {
       clearAuthCookies(res);
@@ -124,13 +130,19 @@ app.post('/auth/refresh', async (req, res) => {
 
     setAuthCookies(res, newAccessToken, newRefreshToken);
     res.json({ ok: true });
-  } catch {
+  } catch (error) {
     clearAuthCookies(res);
-    res.status(401).json({ error: 'Invalid or expired refresh token' });
+    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.NotBeforeError) {
+      res.status(401).json({ error: 'Invalid or expired refresh token' });
+    } else {
+      console.error('[/auth/refresh] Unexpected error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 });
 
 // POST /auth/logout
+// Intentionally requires no auth — clearing cookies is safe/idempotent for unauthenticated requests.
 app.post('/auth/logout', (_req, res) => {
   clearAuthCookies(res);
   res.json({ ok: true });

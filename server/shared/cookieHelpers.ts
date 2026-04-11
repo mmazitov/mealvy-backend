@@ -12,6 +12,12 @@ const COOKIE_DEFAULTS = {
   sameSite: 'strict' as const,
 };
 
+/**
+ * Sets auth cookies on the response.
+ * The refreshToken cookie uses path '/auth/refresh' intentionally — the browser
+ * will only send it to that endpoint, limiting the attack surface if tokens
+ * are somehow intercepted via other routes.
+ */
 export const setAuthCookies = (
   res: Response,
   accessToken: string,
