@@ -7,12 +7,16 @@ import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import depthLimit from 'graphql-depth-limit';
 import http from 'http';
+import jwt from 'jsonwebtoken';
 import passport from 'passport';
-import { Context, createContext } from './context.js';
+import cookieParser from 'cookie-parser';
+import { Context, createContext, prisma } from './context.js';
 import oauthRouter from './oauth.js';
 import './passport/strategies.js';
 import { resolvers } from './resolvers.js';
 import { typeDefs } from './schema.js';
+import { setAuthCookies, clearAuthCookies, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY } from './shared/cookieHelpers.js';
+import { JWT_SECRET } from './resolvers/utils.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -64,6 +68,7 @@ app.use(
 	})
 );
 app.use(json());
+app.use(cookieParser());
 
 // Session для Passport
 app.use(
@@ -93,6 +98,60 @@ app.get('/', (req, res) => {
 	});
 });
 
+// POST /auth/refresh
+app.post('/auth/refresh', async (req, res) => {
+  const refreshToken: string | undefined = req.cookies?.refreshToken;
+  if (!refreshToken) {
+    res.status(401).json({ error: 'No refresh token' });
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, JWT_SECRET) as Record<string, unknown>;
+    if (typeof payload.userId !== 'string') {
+      clearAuthCookies(res);
+      res.status(401).json({ error: 'Invalid token format' });
+      return;
+    }
+    const decoded = payload as { userId: string };
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      clearAuthCookies(res);
+      res.status(401).json({ error: 'User not found' });
+      return;
+    }
+
+    const newAccessToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, {
+      expiresIn: ACCESS_TOKEN_EXPIRY,
+    });
+    const newRefreshToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, {
+      expiresIn: REFRESH_TOKEN_EXPIRY,
+    });
+
+    setAuthCookies(res, newAccessToken, newRefreshToken);
+    res.json({ ok: true });
+  } catch (error) {
+    clearAuthCookies(res);
+    if (
+      error instanceof jwt.JsonWebTokenError ||
+      error instanceof jwt.TokenExpiredError ||
+      error instanceof jwt.NotBeforeError
+    ) {
+      res.status(401).json({ error: 'Invalid or expired refresh token' });
+    } else {
+      console.error('[/auth/refresh] Unexpected error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+// POST /auth/logout
+// Intentionally requires no auth — clearing cookies is safe/idempotent for unauthenticated requests.
+app.post('/auth/logout', (_req, res) => {
+  clearAuthCookies(res);
+  res.json({ ok: true });
+});
+
 app.use('/auth', oauthRouter);
 
 // Apollo Server
@@ -110,7 +169,7 @@ const startServer = async () => {
 	app.use(
 		'/graphql',
 		expressMiddleware(server, {
-			context: async ({ req }) => createContext({ req }),
+			context: async ({ req, res }) => createContext({ req, res }),
 		})
 	);
 

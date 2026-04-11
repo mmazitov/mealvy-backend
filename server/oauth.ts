@@ -1,9 +1,14 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
+import { JWT_SECRET } from './resolvers/utils.js';
+import {
+	ACCESS_TOKEN_EXPIRY,
+	REFRESH_TOKEN_EXPIRY,
+	setAuthCookies,
+} from './shared/cookieHelpers.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // Info endpoint
@@ -19,43 +24,58 @@ router.get('/', (req, res) => {
 });
 
 const handleOAuthCallback =
-	(provider: string) => (req: any, res: any, next: any) => {
-		passport.authenticate(
-			provider,
-			{ session: false },
-			(err: any, user: any) => {
-				if (err || !user) {
-					console.error(`[OAuth] ${provider} authentication failed:`, err);
-					return res.status(401).json({ error: 'Authentication failed' });
-				}
+  (provider: string) => (req: any, res: any, next: any) => {
+    passport.authenticate(
+      provider,
+      { session: false },
+      (err: any, user: any) => {
+        if (err || !user) {
+          console.error(`[OAuth] ${provider} authentication failed:`, err);
+          return res.status(401).send(`
+            <!DOCTYPE html><html><body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage(
+                  { type: 'OAUTH_ERROR', error: 'Authentication failed' },
+                  ${JSON.stringify(CLIENT_URL)}
+                );
+                setTimeout(() => window.close(), 500);
+              }
+            </script>
+            </body></html>
+          `);
+        }
 
-				const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-					expiresIn: '7d',
-				});
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+          expiresIn: ACCESS_TOKEN_EXPIRY,
+        });
+        const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+          expiresIn: REFRESH_TOKEN_EXPIRY,
+        });
 
-				res.send(`
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<title>Authentication Success</title>
-			</head>
-			<body>
-				<h3>Authentication successful! Closing window...</h3>
-				<script>
-					if (window.opener) {
-						window.opener.postMessage(
-							{ type: 'OAUTH_SUCCESS', token: '${token}' },
-							'*'
-						);
-						setTimeout(() => window.close(), 500);
-					}
-				</script>
-			</body>
-			</html>
-		`);
-			},
-		)(req, res, next);
-	};
+        setAuthCookies(res, token, refreshToken);
+
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Authentication Success</title></head>
+          <body>
+            <h3>Authentication successful! Closing window...</h3>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage(
+                  { type: 'OAUTH_SUCCESS' },
+                  ${JSON.stringify(CLIENT_URL)}
+                );
+                setTimeout(() => window.close(), 500);
+              }
+            </script>
+          </body>
+          </html>
+        `);
+      },
+    )(req, res, next);
+  };
 
 router.get('/google-auth', (req, res, next) => {
 	if (req.query.code) {

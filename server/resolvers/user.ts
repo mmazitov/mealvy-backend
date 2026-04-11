@@ -3,6 +3,12 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Context } from '../context.js';
 import { JWT_SECRET, requireAuth } from './utils.js';
+import {
+  ACCESS_TOKEN_EXPIRY,
+  REFRESH_TOKEN_EXPIRY,
+  clearAuthCookies,
+  setAuthCookies,
+} from '../shared/cookieHelpers.js';
 
 export const userResolvers = {
 	User: {
@@ -82,14 +88,14 @@ export const userResolvers = {
 			});
 
 			const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-				expiresIn: '15m',
+				expiresIn: ACCESS_TOKEN_EXPIRY,
 			});
-
 			const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-				expiresIn: '30d',
+				expiresIn: REFRESH_TOKEN_EXPIRY,
 			});
 
-			return { token, refreshToken, user };
+			setAuthCookies(context.res, token, refreshToken);
+			return { user };
 		},
 		login: async (
 			_parent: unknown,
@@ -110,42 +116,22 @@ export const userResolvers = {
 			}
 
 			const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-				expiresIn: '15m',
+				expiresIn: ACCESS_TOKEN_EXPIRY,
 			});
-
 			const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-				expiresIn: '30d',
+				expiresIn: REFRESH_TOKEN_EXPIRY,
 			});
 
-			return { token, refreshToken, user };
+			setAuthCookies(context.res, token, refreshToken);
+			return { user };
 		},
-		refreshToken: async (
+		logout: async (
 			_parent: unknown,
-			args: { token: string },
+			_args: unknown,
 			context: Context,
 		) => {
-			try {
-				const decoded = jwt.verify(args.token, JWT_SECRET) as { userId: string };
-				const user = await context.prisma.user.findUnique({
-					where: { id: decoded.userId },
-				});
-
-				if (!user) {
-					throw new Error('User not found');
-				}
-
-				const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-					expiresIn: '15m',
-				});
-
-				const newRefreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-					expiresIn: '30d',
-				});
-
-				return { token, refreshToken: newRefreshToken, user };
-			} catch (err) {
-				throw new Error('Invalid or expired refresh token');
-			}
+			clearAuthCookies(context.res);
+			return true;
 		},
 		updateProfile: async (
 			_parent: unknown,
@@ -281,14 +267,10 @@ export const userResolvers = {
 			context: Context,
 		) => {
 			return new Promise((resolve, reject) => {
-				// Create a mock request object with the code parameter
 				const req = {
 					query: { code: args.code },
 					user: null,
 				} as any;
-
-				const res = {} as any;
-				const next = () => {};
 
 				passport.authenticate(
 					args.provider,
@@ -301,16 +283,16 @@ export const userResolvers = {
 						}
 
 						const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-							expiresIn: '15m',
+							expiresIn: ACCESS_TOKEN_EXPIRY,
 						});
-
 						const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-							expiresIn: '30d',
+							expiresIn: REFRESH_TOKEN_EXPIRY,
 						});
 
-						resolve({ token, refreshToken, user });
+						setAuthCookies(context.res, token, refreshToken);
+						resolve({ user });
 					},
-				)(req, res, next);
+				)(req, {} as any, () => {});
 			});
 		},
 	},
