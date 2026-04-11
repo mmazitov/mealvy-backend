@@ -36,6 +36,6 @@ export const setAuthCookies = (
 };
 
 export const clearAuthCookies = (res: Response): void => {
-  res.clearCookie('token',        { path: '/' });
-  res.clearCookie('refreshToken', { path: '/auth/refresh' });
+  res.clearCookie('token', { ...COOKIE_DEFAULTS, path: '/' });
+  res.clearCookie('refreshToken', { ...COOKIE_DEFAULTS, path: '/auth/refresh' });
 };

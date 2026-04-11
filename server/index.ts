@@ -132,7 +132,11 @@ app.post('/auth/refresh', async (req, res) => {
     res.json({ ok: true });
   } catch (error) {
     clearAuthCookies(res);
-    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.NotBeforeError) {
+    if (
+      error instanceof jwt.JsonWebTokenError ||
+      error instanceof jwt.TokenExpiredError ||
+      error instanceof jwt.NotBeforeError
+    ) {
       res.status(401).json({ error: 'Invalid or expired refresh token' });
     } else {
       console.error('[/auth/refresh] Unexpected error:', error);

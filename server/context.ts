@@ -12,10 +12,10 @@ export interface Context {
 
 interface ContextArg {
   req?: Request;
-  res?: Response;
+  res: Response;
 }
 
-export const createContext = async (contextArg?: ContextArg | Request): Promise<Context> => {
+export const createContext = async (contextArg: ContextArg | Request): Promise<Context> => {
   const req = (contextArg as ContextArg)?.req || (contextArg as Request);
   const res = (contextArg as ContextArg)?.res;
   const cookies = req?.cookies ?? {};
@@ -43,5 +43,5 @@ export const createContext = async (contextArg?: ContextArg | Request): Promise<
     }
   }
 
-  return { prisma, userId, res: res! };
+  return { prisma, userId, res };
 };
