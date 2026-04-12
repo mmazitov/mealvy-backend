@@ -10,6 +10,12 @@ import {
 
 const router = express.Router();
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const ALLOWED_ORIGINS = [
+	'http://localhost:5173',
+	'http://localhost:5174',
+	'https://mealvy.vercel.app',
+	process.env.CLIENT_URL,
+].filter(Boolean);
 
 // Info endpoint
 router.get('/', (req, res) => {
@@ -37,7 +43,7 @@ const handleOAuthCallback =
               if (window.opener) {
                 window.opener.postMessage(
                   { type: 'OAUTH_ERROR', error: 'Authentication failed' },
-                  ${JSON.stringify(CLIENT_URL)}
+                  '*'
                 );
                 setTimeout(() => window.close(), 500);
               }
@@ -65,7 +71,7 @@ const handleOAuthCallback =
               if (window.opener) {
                 window.opener.postMessage(
                   { type: 'OAUTH_SUCCESS' },
-                  ${JSON.stringify(CLIENT_URL)}
+                  '*'
                 );
                 setTimeout(() => window.close(), 500);
               }
