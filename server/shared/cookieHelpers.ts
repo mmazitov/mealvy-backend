@@ -6,12 +6,10 @@ export const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60; // 30 days (seconds)
 export const ACCESS_TOKEN_EXPIRY  = `${ACCESS_TOKEN_MAX_AGE}s`;
 export const REFRESH_TOKEN_EXPIRY = `${REFRESH_TOKEN_MAX_AGE}s`;
 
-const isProduction = process.env.NODE_ENV === 'production';
-
 const COOKIE_DEFAULTS = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+  secure: true,
+  sameSite: 'none' as const,
 };
 
 /**

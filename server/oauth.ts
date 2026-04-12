@@ -10,12 +10,6 @@ import {
 
 const router = express.Router();
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const ALLOWED_ORIGINS = [
-	'http://localhost:5173',
-	'http://localhost:5174',
-	'https://mealvy.vercel.app',
-	process.env.CLIENT_URL,
-].filter(Boolean);
 
 // Info endpoint
 router.get('/', (req, res) => {
@@ -52,11 +46,14 @@ const handleOAuthCallback =
           `);
         }
 
-        const sessionToken = jwt.sign(
-          { userId: user.id, type: 'oauth_session' },
-          JWT_SECRET,
-          { expiresIn: '5m' }
-        );
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+          expiresIn: ACCESS_TOKEN_EXPIRY,
+        });
+        const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+          expiresIn: REFRESH_TOKEN_EXPIRY,
+        });
+
+        setAuthCookies(res, token, refreshToken);
 
         res.send(`
           <!DOCTYPE html>
@@ -67,7 +64,7 @@ const handleOAuthCallback =
             <script>
               if (window.opener) {
                 window.opener.postMessage(
-                  { type: 'OAUTH_SUCCESS', sessionToken: ${JSON.stringify(sessionToken)} },
+                  { type: 'OAUTH_SUCCESS' },
                   '*'
                 );
                 setTimeout(() => window.close(), 500);
@@ -113,34 +110,5 @@ router.get('/facebook-auth', (req, res, next) => {
 });
 
 router.get('/facebook/callback', handleOAuthCallback('facebook'));
-
-router.post('/exchange-session', (req, res) => {
-	const { sessionToken } = req.body;
-	
-	if (!sessionToken) {
-		return res.status(400).json({ error: 'Session token required' });
-	}
-
-	try {
-		const payload = jwt.verify(sessionToken, JWT_SECRET) as any;
-		
-		if (payload.type !== 'oauth_session') {
-			return res.status(401).json({ error: 'Invalid session token type' });
-		}
-
-		const accessToken = jwt.sign({ userId: payload.userId }, JWT_SECRET, {
-			expiresIn: ACCESS_TOKEN_EXPIRY,
-		});
-		const refreshToken = jwt.sign({ userId: payload.userId }, JWT_SECRET, {
-			expiresIn: REFRESH_TOKEN_EXPIRY,
-		});
-
-		setAuthCookies(res, accessToken, refreshToken);
-		res.json({ ok: true });
-	} catch (error) {
-		console.error('[OAuth] Session token exchange failed:', error);
-		res.status(401).json({ error: 'Invalid or expired session token' });
-	}
-});
 
 export default router;
