@@ -1,6 +1,7 @@
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { expressMiddleware } from '@as-integrations/express4';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { json } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -9,14 +10,13 @@ import depthLimit from 'graphql-depth-limit';
 import http from 'http';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
-import cookieParser from 'cookie-parser';
 import { Context, createContext, prisma } from './context.js';
 import oauthRouter from './oauth.js';
 import './passport/strategies.js';
 import { resolvers } from './resolvers.js';
-import { typeDefs } from './schema.js';
-import { setAuthCookies, clearAuthCookies, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY } from './shared/cookieHelpers.js';
 import { JWT_SECRET } from './resolvers/utils.js';
+import { typeDefs } from './schema.js';
+import { ACCESS_TOKEN_EXPIRY, clearAuthCookies, REFRESH_TOKEN_EXPIRY, setAuthCookies } from './shared/cookieHelpers.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -32,6 +32,7 @@ if (process.env.NODE_ENV === 'production') {
 
 const allowedOrigins = [
 	process.env.CLIENT_URL || 'http://localhost:5173',
+	'https://mealvy.app',
 	'https://mealvy.vercel.app',
 	'http://localhost:5173',
 	'http://localhost:5174',
