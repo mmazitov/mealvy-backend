@@ -3,9 +3,9 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { JWT_SECRET } from './resolvers/utils.js';
 import {
-	ACCESS_TOKEN_EXPIRY,
-	REFRESH_TOKEN_EXPIRY,
-	setAuthCookies,
+  ACCESS_TOKEN_EXPIRY,
+  REFRESH_TOKEN_EXPIRY,
+  setAuthCookies,
 } from './shared/cookieHelpers.js';
 
 const router = express.Router();
@@ -77,37 +77,21 @@ const handleOAuthCallback =
     )(req, res, next);
   };
 
-router.get('/google-auth', (req, res, next) => {
-	if (req.query.code) {
-		handleOAuthCallback('google')(req, res, next);
-	} else {
-		passport.authenticate('google', { scope: ['profile', 'email'] })(
-			req,
-			res,
-			next,
-		);
-	}
-});
+router.get('/google-auth', 
+	passport.authenticate('google', { scope: ['profile', 'email'] })
+);
 
 router.get('/google/callback', handleOAuthCallback('google'));
 
-router.get('/github-auth', (req, res, next) => {
-	if (req.query.code) {
-		handleOAuthCallback('github')(req, res, next);
-	} else {
-		passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
-	}
-});
+router.get('/github-auth',
+	passport.authenticate('github', { scope: ['user:email'] })
+);
 
 router.get('/github/callback', handleOAuthCallback('github'));
 
-router.get('/facebook-auth', (req, res, next) => {
-	if (req.query.code) {
-		handleOAuthCallback('facebook')(req, res, next);
-	} else {
-		passport.authenticate('facebook', { scope: ['email'] })(req, res, next);
-	}
-});
+router.get('/facebook-auth',
+	passport.authenticate('facebook', { scope: ['email'] })
+);
 
 router.get('/facebook/callback', handleOAuthCallback('facebook'));
 
