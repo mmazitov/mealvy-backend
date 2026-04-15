@@ -33,6 +33,7 @@ if (process.env.NODE_ENV === 'production') {
 const allowedOrigins = [
 	process.env.CLIENT_URL || 'http://localhost:5173',
 	'https://mealvy.app',
+	'https://www.mealvy.app',
 	'https://mealvy.vercel.app',
 	'http://localhost:5173',
 	'http://localhost:5174',

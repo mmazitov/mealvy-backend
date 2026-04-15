@@ -10,13 +10,13 @@ const COOKIE_DEFAULTS = {
   httpOnly: true,
   secure: true,
   sameSite: 'none' as const,
+  domain: process.env.NODE_ENV === 'production' ? '.mealvy.app' : undefined,
 };
 
 /**
  * Sets auth cookies on the response.
- * The refreshToken cookie uses path '/auth/refresh' intentionally — the browser
- * will only send it to that endpoint, limiting the attack surface if tokens
- * are somehow intercepted via other routes.
+ * Both tokens use path '/' to ensure they work correctly in cross-domain scenarios.
+ * Security is maintained through httpOnly, secure, and sameSite flags.
  */
 export const setAuthCookies = (
   res: Response,
@@ -30,12 +30,12 @@ export const setAuthCookies = (
   });
   res.cookie('refreshToken', refreshToken, {
     ...COOKIE_DEFAULTS,
-    path: '/auth/refresh',
+    path: '/',
     maxAge: REFRESH_TOKEN_MAX_AGE * 1000,
   });
 };
 
 export const clearAuthCookies = (res: Response): void => {
   res.clearCookie('token', { ...COOKIE_DEFAULTS, path: '/' });
-  res.clearCookie('refreshToken', { ...COOKIE_DEFAULTS, path: '/auth/refresh' });
+  res.clearCookie('refreshToken', { ...COOKIE_DEFAULTS, path: '/' });
 };
