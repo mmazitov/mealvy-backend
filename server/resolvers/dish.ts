@@ -87,7 +87,6 @@ export const dishResolvers = {
 		) => {
 			const userId = requireAuth(context);
 
-			// Validate productIds if provided
 			if (args.ingredients) {
 				for (const ing of args.ingredients) {
 					if (ing.productId) {
@@ -131,7 +130,6 @@ export const dishResolvers = {
 		) => {
 			const userId = requireAuth(context);
 
-			// Check if user owns the dish or is admin
 			const existingDish = await context.prisma.dish.findUnique({
 				where: { id: args.id },
 			});
@@ -148,7 +146,6 @@ export const dishResolvers = {
 
 			const { id, ...updateData } = args;
 
-			// Validate productIds if provided
 			if (updateData.ingredients) {
 				for (const ing of updateData.ingredients) {
 					if (ing.productId) {
@@ -176,7 +173,6 @@ export const dishResolvers = {
 		) => {
 			const userId = requireAuth(context);
 
-			// Check if user owns the dish or is admin
 			const existingDish = await context.prisma.dish.findUnique({
 				where: { id: args.id },
 			});

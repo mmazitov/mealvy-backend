@@ -1,16 +1,15 @@
-// server/shared/cookieHelpers.ts
 import { Response } from 'express';
 import { config } from './config.js';
 
-export const ACCESS_TOKEN_MAX_AGE  = 15 * 60;           // 15 минут (секунды)
-export const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60; // 30 дней (секунды)
+export const ACCESS_TOKEN_MAX_AGE  = 15 * 60;           // 15 minutes (seconds)
+export const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60; // 30 days (seconds)
 
 export const ACCESS_TOKEN_EXPIRY  = `${ACCESS_TOKEN_MAX_AGE}s`;
 export const REFRESH_TOKEN_EXPIRY = `${REFRESH_TOKEN_MAX_AGE}s`;
 
 const cookieDefaults = () => ({
   httpOnly: true,
-  secure: !config.isDev,          // false на localhost (http), true в prod
+  secure: !config.isDev,
   sameSite: config.isDev ? ('lax' as const) : ('none' as const),
   domain: config.cookieDomain,
 });

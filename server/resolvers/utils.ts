@@ -1,4 +1,3 @@
-// server/resolvers/utils.ts
 import { GraphQLError } from 'graphql';
 import { config } from '../shared/config.js';
 import { Context } from '../context.js';
@@ -17,5 +16,4 @@ export const requireAuth = (context: Context): string => {
   return context.userId;
 };
 
-// Единый источник — config.jwtSecret
 export const JWT_SECRET = config.jwtSecret;

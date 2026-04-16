@@ -1,4 +1,3 @@
-// server/context.ts
 import { PrismaClient } from '@prisma/client';
 import { Response, Request } from 'express';
 import jwt from 'jsonwebtoken';
@@ -29,7 +28,7 @@ export const createContext = async (contextArg: ContextArg | Request): Promise<C
       const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
       userId = decoded.userId;
     } catch {
-      // Невалидный или истёкший токен — userId остаётся undefined
+      // Invalid or expired token
     }
   }
 

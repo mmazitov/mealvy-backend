@@ -54,7 +54,6 @@ export const plannerResolvers = {
 
 			const incomingIds = items.map((item) => item.id).filter(Boolean) as string[];
 
-			// 1. Delete existing items for the user for the specific date range that are not in incomingIds
 			await prisma.plannerItem.deleteMany({
 				where: { 
 					userId,
@@ -66,21 +65,17 @@ export const plannerResolvers = {
 				},
 			});
 
-			// Group incoming items by date to manage MenuPlans
 			const itemsByDate: Record<string, typeof items> = {};
 			items.forEach(item => {
 				const d = new Date(item.date);
-				// Normalize date to YYYY-MM-DD for grouping
 				const dateStr = d.toISOString().split('T')[0];
 				if (!itemsByDate[dateStr]) itemsByDate[dateStr] = [];
 				itemsByDate[dateStr].push(item);
 			});
 
-			// 2. Process each date to ensure MenuPlan exists and items are linked
 			for (const [dateStr, dateItems] of Object.entries(itemsByDate)) {
 				const date = new Date(dateStr);
 				
-				// Find or create MenuPlan for this date
 				const menuPlan = await prisma.menuPlan.upsert({
 					where: {
 						userId_date: {
@@ -97,7 +92,6 @@ export const plannerResolvers = {
 					}
 				});
 
-				// Upsert items for this day and link to MenuPlan
 				await Promise.all(
 					dateItems.map((item) => {
 						if (item.id) {
@@ -125,8 +119,6 @@ export const plannerResolvers = {
 				);
 			}
 
-			// 3. Clean up empty MenuPlans (optional, but good for hygiene)
-			// Small optimization: only check MenuPlans in the current range
 			const plansInRange = await prisma.menuPlan.findMany({
 				where: {
 					userId,

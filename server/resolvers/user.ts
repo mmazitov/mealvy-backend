@@ -1,4 +1,3 @@
-// server/resolvers/user.ts
 import { GraphQLError } from 'graphql';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';

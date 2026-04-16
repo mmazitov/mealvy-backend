@@ -113,7 +113,6 @@ export const productResolvers = {
 		) => {
 			const userId = requireAuth(context);
 
-			// Check if user owns the product or is admin
 			const existingProduct = await context.prisma.product.findUnique({
 				where: { id: args.id },
 			});
@@ -143,7 +142,6 @@ export const productResolvers = {
 		) => {
 			const userId = requireAuth(context);
 
-			// Check if user owns the product or is admin
 			const existingProduct = await context.prisma.product.findUnique({
 				where: { id: args.id },
 			});

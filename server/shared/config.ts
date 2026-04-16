@@ -1,6 +1,3 @@
-// server/shared/config.ts
-// Dotenv загружается здесь, а не в index.ts — ES-модули хоистят импорты,
-// поэтому config.ts выполняется ДО кода index.ts.
 import dotenv from 'dotenv';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -34,10 +31,7 @@ export const config = {
     ? (process.env.SESSION_SECRET || 'session-dev-only')
     : required('SESSION_SECRET'),
 
-  // URL фронтенда (для CORS и OAuth redirect)
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
-
-  // Cookie-домен: в production — .mealvy.app, в dev — undefined (localhost)
   cookieDomain: process.env.COOKIE_DOMAIN || (isDev ? undefined : '.mealvy.app'),
 
   db: {

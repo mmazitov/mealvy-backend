@@ -1,5 +1,3 @@
-// server/index.ts
-// Dotenv загружается в server/shared/config.ts (первый импортируемый модуль)
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { expressMiddleware } from '@as-integrations/express4';
@@ -29,7 +27,6 @@ import {
 const app = express();
 const httpServer = http.createServer(app);
 
-// CORS: allowed origins from env + standard patterns
 const buildAllowedOrigins = (): (string | RegExp)[] => {
   const origins: (string | RegExp)[] = [
     'http://localhost:5173',
@@ -92,7 +89,6 @@ app.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'Mealvy API', endpoints: { graphql: '/graphql', auth: '/auth' } });
 });
 
-// POST /auth/refresh — refresh access token using refresh cookie
 app.post('/auth/refresh', async (req, res) => {
   const refreshToken: string | undefined = req.cookies?.refreshToken;
   if (!refreshToken) {
@@ -128,7 +124,6 @@ app.post('/auth/refresh', async (req, res) => {
   }
 });
 
-// POST /auth/logout — clearing cookies is safe for unauthenticated requests
 app.post('/auth/logout', (_req, res) => {
   clearAuthCookies(res);
   res.json({ ok: true });
