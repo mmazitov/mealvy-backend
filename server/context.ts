@@ -1,6 +1,8 @@
+// server/context.ts
 import { PrismaClient } from '@prisma/client';
 import { Response, Request } from 'express';
 import jwt from 'jsonwebtoken';
+import { config } from './shared/config.js';
 
 export const prisma = new PrismaClient();
 
@@ -18,28 +20,16 @@ interface ContextArg {
 export const createContext = async (contextArg: ContextArg | Request): Promise<Context> => {
   const req = (contextArg as ContextArg)?.req || (contextArg as Request);
   const res = (contextArg as ContextArg)?.res;
-  const cookies = req?.cookies ?? {};
-
-  const token: string = cookies.token || '';
+  const token: string = req?.cookies?.token || '';
 
   let userId: string | undefined;
 
   if (token) {
     try {
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET || 'supersecret-dev-only',
-      ) as { userId: string };
+      const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
       userId = decoded.userId;
-    } catch (error) {
-      if (
-        !(error instanceof jwt.JsonWebTokenError) &&
-        !(error instanceof jwt.TokenExpiredError) &&
-        !(error instanceof jwt.NotBeforeError)
-      ) {
-        throw error;
-      }
-      // Invalid or expired token — userId stays undefined
+    } catch {
+      // Невалидный или истёкший токен — userId остаётся undefined
     }
   }
 

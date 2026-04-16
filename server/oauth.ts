@@ -25,6 +25,10 @@ router.get('/', (req, res) => {
 			github: '/auth/github-auth',
 			facebook: '/auth/facebook-auth',
 		},
+		config: {
+			clientUrl: CLIENT_URL,
+			nodeEnv: process.env.NODE_ENV,
+		},
 	});
 });
 

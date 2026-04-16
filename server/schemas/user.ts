@@ -19,18 +19,15 @@ export const userTypeDefs = gql`
     productsCount: Int!
   }
 
-  # Tokens are set as httpOnly cookies — only user is returned in the body
+  # Tokens set as httpOnly cookies — only user is returned in response body
   type AuthPayload {
-    user: User!
-  }
-
-  # Tokens are set as httpOnly cookies — only user is returned in the body
-  type SocialAuthPayload {
     user: User!
   }
 
   extend type Query {
     me: User
+    favoriteProducts: [Product!]!
+    favoriteDishes: [Dish!]!
   }
 
   extend type Mutation {
@@ -46,6 +43,9 @@ export const userTypeDefs = gql`
       dislike: [String!]
     ): User!
     changePassword(currentPassword: String!, newPassword: String!): Boolean!
-    handleOAuthCallback(provider: String!, code: String!): SocialAuthPayload!
+    addToFavoritesProduct(productId: ID!): User!
+    removeFromFavoritesProduct(productId: ID!): User!
+    addToFavoritesDish(dishId: ID!): User!
+    removeFromFavoritesDish(dishId: ID!): User!
   }
 `;
