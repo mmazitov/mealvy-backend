@@ -58,27 +58,60 @@ model Product {
 }
 
 model User {
-  id                 String        @id @default(auto()) @map("_id") @db.ObjectId
-  email              String?       @unique
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  email              String?            @unique
   name               String?
   password           String?
   phone              String?
   avatar             String?
-  role               Role          @default(USER)
+  role               Role               @default(USER)
   accounts           Account[]
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   diet               String?
   allergy            String[]
   dislike            String[]
   dishes             Dish[]
-  favoriteDishIds    String[]      @db.ObjectId
-  favoriteDishes     Dish[]        @relation("UserFavoriteDishes", fields: [favoriteDishIds], references: [id])
+  favoriteDishIds    String[]           @db.ObjectId
+  favoriteDishes     Dish[]             @relation("UserFavoriteDishes", fields: [favoriteDishIds], references: [id])
   products           Product[]
-  favoriteProductIds String[]      @db.ObjectId
-  favoriteProducts   Product[]     @relation("UserFavoriteProducts", fields: [favoriteProductIds], references: [id])
+  favoriteProductIds String[]           @db.ObjectId
+  favoriteProducts   Product[]          @relation("UserFavoriteProducts", fields: [favoriteProductIds], references: [id])
   plannerItems       PlannerItem[]
   menuPlans          MenuPlan[]
+  family             FamilyMember[]     @relation("UserFamily")
+  familyMembers      FamilyMember[]     @relation("FamilyMembers")
+  sentInvitations    FamilyInvitation[] @relation("SentInvitations")
+}
+
+model FamilyMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation("UserFamily", fields: [userId], references: [id], onDelete: Cascade)
+  memberId  String   @db.ObjectId
+  member    User     @relation("FamilyMembers", fields: [memberId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, memberId])
+}
+
+model FamilyInvitation {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  inviterId    String           @db.ObjectId
+  inviter      User             @relation("SentInvitations", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviteeEmail String
+  status       InvitationStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+  expiresAt    DateTime
+
+  @@unique([inviterId, inviteeEmail])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
 model PlannerItem {
@@ -116,11 +149,11 @@ enum MealTime {
 }
 
 model Account {
-  id                String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String  @db.ObjectId
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String @db.ObjectId
   provider          String
   providerAccountId String
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }

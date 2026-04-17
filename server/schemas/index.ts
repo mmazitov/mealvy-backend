@@ -2,6 +2,7 @@ import { mergeTypeDefs } from '@graphql-tools/merge';
 import { gql } from 'graphql-tag';
 
 import { dishTypeDefs } from './dish.js';
+import { familyTypeDefs } from './family.js';
 import { plannerTypeDefs } from './planner.js';
 import { productTypeDefs } from './product.js';
 import { userTypeDefs } from './user.js';
@@ -22,4 +23,5 @@ export const typeDefs = mergeTypeDefs([
 	productTypeDefs,
 	dishTypeDefs,
 	plannerTypeDefs,
+	familyTypeDefs,
 ]);
