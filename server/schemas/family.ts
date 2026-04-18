@@ -22,6 +22,7 @@ export const familyTypeDefs = gql`
 
   extend type Mutation {
     inviteFamilyMember(email: String!): FamilyMember!
+    acceptFamilyInvitation(invitationId: ID!): FamilyMember!
     removeFamilyMember(memberId: ID!): FamilyMember!
     cancelFamilyInvitation(invitationId: ID!): FamilyMember!
   }

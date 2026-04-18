@@ -207,6 +207,107 @@ export class FamilyService {
     return { id: memberId };
   }
 
+  static async acceptFamilyInvitation(
+    userId: string,
+    invitationId: string,
+    prisma: PrismaClient,
+  ) {
+    const invitation = await prisma.familyInvitation.findUnique({
+      where: { id: invitationId },
+      include: {
+        inviter: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new GraphQLError('Invitation not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    if (invitation.status !== InvitationStatus.PENDING) {
+      throw new GraphQLError('Invitation is no longer valid', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    if (invitation.expiresAt < new Date()) {
+      await prisma.familyInvitation.update({
+        where: { id: invitationId },
+        data: { status: InvitationStatus.EXPIRED },
+      });
+      throw new GraphQLError('Invitation has expired', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!currentUser) {
+      throw new GraphQLError('User not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    if (currentUser.email !== invitation.inviteeEmail) {
+      throw new GraphQLError('This invitation is not for your email', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const existingMember = await prisma.familyMember.findUnique({
+      where: {
+        userId_memberId: {
+          userId: invitation.inviterId,
+          memberId: userId,
+        },
+      },
+    });
+
+    if (existingMember) {
+      throw new GraphQLError('You are already a family member', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    await prisma.$transaction([
+      prisma.familyMember.create({
+        data: {
+          userId: invitation.inviterId,
+          memberId: userId,
+        },
+      }),
+      prisma.familyMember.create({
+        data: {
+          userId: userId,
+          memberId: invitation.inviterId,
+        },
+      }),
+      prisma.familyInvitation.update({
+        where: { id: invitationId },
+        data: { status: InvitationStatus.ACCEPTED },
+      }),
+    ]);
+
+    return {
+      id: invitation.inviter.id,
+      email: invitation.inviter.email,
+      name: invitation.inviter.name,
+      status: 'MEMBER',
+      sharedMenusCount: 0,
+      invitedAt: new Date().toISOString(),
+    };
+  }
+
   static async cancelFamilyInvitation(
     userId: string,
     invitationId: string,

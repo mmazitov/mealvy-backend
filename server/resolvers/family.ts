@@ -18,6 +18,18 @@ export const familyResolvers = {
       const userId = requireAuth(context);
       return FamilyService.inviteFamilyMember(userId, args.email, context.prisma);
     },
+    acceptFamilyInvitation: async (
+      _parent: unknown,
+      args: { invitationId: string },
+      context: Context,
+    ) => {
+      const userId = requireAuth(context);
+      return FamilyService.acceptFamilyInvitation(
+        userId,
+        args.invitationId,
+        context.prisma,
+      );
+    },
     removeFamilyMember: async (
       _parent: unknown,
       args: { memberId: string },
