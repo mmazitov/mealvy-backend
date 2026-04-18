@@ -159,7 +159,7 @@ export class FamilyService {
 
     // Send invitation email
     const inviterName = currentUser?.name || currentUser?.email || 'Користувач Mealvy';
-    const invitationLink = `${config.clientUrl}/family/accept-invitation/${invitation.id}`;
+    const invitationLink = `${config.clientUrl}/profile/${invitation.id}`;
     
     // Send email asynchronously (don't wait for it)
     EmailService.sendFamilyInvitation(email, inviterName, invitationLink).catch((error) => {
