@@ -1,6 +1,6 @@
 import { Context } from '../context.js';
 import { requireAuth } from './utils.js';
-import { FamilyService } from '../services/family.service.js';
+import { FamilyService } from '../services/family.js';
 
 export const familyResolvers = {
   Query: {

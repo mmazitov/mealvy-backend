@@ -1,6 +1,6 @@
 import { GraphQLError } from 'graphql';
 import { PrismaClient, InvitationStatus } from '@prisma/client';
-import { EmailService } from './email.service.js';
+import { EmailService } from './email.js';
 import { config } from '../shared/config.js';
 
 export class FamilyService {
