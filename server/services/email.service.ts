@@ -1,11 +1,16 @@
 import nodemailer from 'nodemailer';
 import { config } from '../shared/config.js';
+import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface SendEmailParams {
   to: string;
   subject: string;
   html: string;
-  text?: string;
 }
 
 export class EmailService {
@@ -19,13 +24,12 @@ export class EmailService {
     },
   });
 
-  static async sendEmail({ to, subject, html, text }: SendEmailParams) {
+  static async sendEmail({ to, subject, html }: SendEmailParams) {
     try {
       const info = await this.transporter.sendMail({
         from: `"${config.email.fromName}" <${config.email.fromEmail}>`,
         to,
         subject,
-        text,
         html,
       });
 
@@ -44,72 +48,17 @@ export class EmailService {
   ) {
     const subject = `${inviterName} запрошує вас до сім'ї в Mealvy`;
     
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #4F46E5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; background: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🍽️ Запрошення до сім'ї</h1>
-            </div>
-            <div class="content">
-              <p>Привіт!</p>
-              <p><strong>${inviterName}</strong> запрошує вас приєднатися до їхньої сім'ї в Mealvy.</p>
-              <p>Після прийняття запрошення ви зможете:</p>
-              <ul>
-                <li>📅 Переглядати спільні меню</li>
-                <li>🍳 Додавати страви до сімейних планів</li>
-                <li>🛒 Створювати списки покупок разом</li>
-              </ul>
-              <p style="text-align: center;">
-                <a href="${invitationLink}" class="button">Прийняти запрошення</a>
-              </p>
-              <p style="color: #6b7280; font-size: 14px;">
-                Або скопіюйте це посилання в браузер:<br>
-                <code>${invitationLink}</code>
-              </p>
-              <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
-                Запрошення дійсне протягом 7 днів.
-              </p>
-            </div>
-            <div class="footer">
-              <p>Це автоматичне повідомлення від Mealvy</p>
-              <p>Якщо ви не очікували цього листа, просто проігноруйте його.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const text = `
-${inviterName} запрошує вас до сім'ї в Mealvy
-
-Після прийняття запрошення ви зможете:
-- Переглядати спільні меню
-- Додавати страви до сімейних планів
-- Створювати списки покупок разом
-
-Прийняти запрошення: ${invitationLink}
-
-Запрошення дійсне протягом 7 днів.
-    `;
+    const templatePath = join(__dirname, '../templates/family-invitation.html');
+    let html = await readFile(templatePath, 'utf-8');
+    
+    html = html
+      .replace(/{{inviterName}}/g, inviterName)
+      .replace(/{{invitationLink}}/g, invitationLink);
 
     return this.sendEmail({
       to: inviteeEmail,
       subject,
       html,
-      text,
     });
   }
 }
