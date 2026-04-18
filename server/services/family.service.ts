@@ -1,5 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { PrismaClient, InvitationStatus } from '@prisma/client';
+import { EmailService } from './email.service.js';
+import { config } from '../shared/config.js';
 
 export class FamilyService {
   static async getFamilyMembers(userId: string, prisma: PrismaClient) {
@@ -95,7 +97,7 @@ export class FamilyService {
     // Check if inviting self
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true },
+      select: { email: true, name: true },
     });
 
     if (currentUser?.email === email) {
@@ -153,6 +155,15 @@ export class FamilyService {
         expiresAt,
         status: InvitationStatus.PENDING,
       },
+    });
+
+    // Send invitation email
+    const inviterName = currentUser?.name || currentUser?.email || 'Користувач Mealvy';
+    const invitationLink = `${config.clientUrl}/family/accept-invitation/${invitation.id}`;
+    
+    // Send email asynchronously (don't wait for it)
+    EmailService.sendFamilyInvitation(email, inviterName, invitationLink).catch((error) => {
+      console.error('Failed to send invitation email:', error);
     });
 
     return {
