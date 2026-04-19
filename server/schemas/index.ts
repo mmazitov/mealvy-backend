@@ -5,6 +5,7 @@ import { dishTypeDefs } from './dish.js';
 import { familyTypeDefs } from './family.js';
 import { plannerTypeDefs } from './planner.js';
 import { productTypeDefs } from './product.js';
+import { savedMenuTypeDefs } from './savedMenu.js';
 import { userTypeDefs } from './user.js';
 
 const baseTypeDefs = gql`
@@ -23,5 +24,6 @@ export const typeDefs = mergeTypeDefs([
 	productTypeDefs,
 	dishTypeDefs,
 	plannerTypeDefs,
+	savedMenuTypeDefs,
 	familyTypeDefs,
 ]);
