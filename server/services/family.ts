@@ -1,7 +1,7 @@
+import { InvitationStatus, PrismaClient } from '@prisma/client';
 import { GraphQLError } from 'graphql';
-import { PrismaClient, InvitationStatus } from '@prisma/client';
-import { EmailService } from './email.js';
 import { config } from '../shared/config.js';
+import { EmailService } from './email.js';
 
 export class FamilyService {
   static async getFamilyMembers(userId: string, prisma: PrismaClient) {
@@ -15,7 +15,7 @@ export class FamilyService {
             email: true,
             name: true,
             _count: {
-              select: { menuPlans: true },
+              select: { savedMenus: true },
             },
           },
         },
@@ -39,7 +39,7 @@ export class FamilyService {
         email: true,
         name: true,
         _count: {
-          select: { menuPlans: true },
+          select: { savedMenus: true },
         },
       },
     });
@@ -57,7 +57,7 @@ export class FamilyService {
         email: currentUser.email,
         name: currentUser.name,
         status: 'OWNER',
-        sharedMenusCount: currentUser._count.menuPlans,
+        sharedMenusCount: currentUser._count.savedMenus,
         invitedAt: null,
       },
       ...familyRelations.map((rel) => ({
@@ -65,7 +65,7 @@ export class FamilyService {
         email: rel.member.email,
         name: rel.member.name,
         status: 'MEMBER',
-        sharedMenusCount: rel.member._count.menuPlans,
+        sharedMenusCount: rel.member._count.savedMenus,
         invitedAt: rel.createdAt.toISOString(),
       })),
       ...pendingInvitations.map((inv) => ({
