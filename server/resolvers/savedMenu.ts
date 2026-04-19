@@ -54,5 +54,18 @@ export const savedMenuResolvers = {
 			const userId = requireAuth(context);
 			return SavedMenuService.duplicateSavedMenu(args.id, userId, context.prisma);
 		},
+		applyTemplateToPlanner: async (
+			_parent: unknown,
+			args: { savedMenuId: string; targetStartDate: string },
+			context: Context
+		) => {
+			const userId = requireAuth(context);
+			return SavedMenuService.applyTemplateToPlanner(
+				userId,
+				args.savedMenuId,
+				args.targetStartDate,
+				context.prisma
+			);
+		},
 	},
 };

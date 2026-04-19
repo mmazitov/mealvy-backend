@@ -1,30 +1,18 @@
 import { Context } from '../context.js';
-import { isAdmin, requireAuth } from './utils.js';
+import { requireAuth } from './utils.js';
+import { DishService } from '../services/dish.js';
 
 export const dishResolvers = {
 	Query: {
 		dish: async (_parent: unknown, args: { id: string }, context: Context) => {
-			const dish = await context.prisma.dish.findUnique({
-				where: { id: args.id },
-			});
-
-			return dish;
+			return DishService.getDish(args.id, context.prisma);
 		},
 		dishByName: async (
-			_parent: unknown, 
-			args: { name: string }, 
+			_parent: unknown,
+			args: { name: string },
 			context: Context
 		) => {
-			const dish = await context.prisma.dish.findFirst({
-				where: { 
-					name: {
-						equals: args.name,
-						mode: 'insensitive'
-					}
-				},
-			});
-
-			return dish;
+			return DishService.getDishByName(args.name, context.prisma);
 		},
 		dishes: async (
 			_parent: unknown,
@@ -35,35 +23,9 @@ export const dishResolvers = {
 				offset?: number;
 				userId?: string;
 			},
-			context: Context,
+			context: Context
 		) => {
-			const dishes = await context.prisma.dish.findMany({
-				where: {
-					...(args.category && { category: args.category }),
-					...(args.search && {
-						OR: [
-							{
-								name: {
-									contains: args.search,
-									mode: 'insensitive',
-								},
-							},
-							{
-								description: {
-									contains: args.search,
-									mode: 'insensitive',
-								},
-							},
-						],
-					}),
-					...(args.userId && { userId: args.userId }),
-				},
-				take: args.limit || undefined,
-				skip: args.offset || undefined,
-				orderBy: { createdAt: 'desc' },
-			});
-
-			return dishes;
+			return DishService.getDishes(args, context.prisma);
 		},
 	},
 	Mutation: {
@@ -83,31 +45,10 @@ export const dishResolvers = {
 				carbs?: number;
 				description?: string;
 			},
-			context: Context,
+			context: Context
 		) => {
 			const userId = requireAuth(context);
-
-			if (args.ingredients) {
-				for (const ing of args.ingredients) {
-					if (ing.productId) {
-						const product = await context.prisma.product.findUnique({
-							where: { id: ing.productId },
-						});
-						if (!product) {
-							throw new Error(`Product with id ${ing.productId} not found`);
-						}
-					}
-				}
-			}
-
-			const dish = await context.prisma.dish.create({
-				data: {
-					...args,
-					userId,
-				},
-			});
-
-			return dish;
+			return DishService.createDish(userId, args, context.prisma);
 		},
 		updateDish: async (
 			_parent: unknown,
@@ -126,92 +67,32 @@ export const dishResolvers = {
 				carbs?: number;
 				description?: string;
 			},
-			context: Context,
+			context: Context
 		) => {
 			const userId = requireAuth(context);
-
-			const existingDish = await context.prisma.dish.findUnique({
-				where: { id: args.id },
-			});
-
-			if (!existingDish) {
-				throw new Error('Dish not found');
-			}
-
-			const userIsAdmin = await isAdmin(userId, context.prisma);
-			
-			if (existingDish.userId !== userId && !userIsAdmin) {
-				throw new Error('Not authorized to update this dish');
-			}
-
 			const { id, ...updateData } = args;
-
-			if (updateData.ingredients) {
-				for (const ing of updateData.ingredients) {
-					if (ing.productId) {
-						const product = await context.prisma.product.findUnique({
-							where: { id: ing.productId },
-						});
-						if (!product) {
-							throw new Error(`Product with id ${ing.productId} not found`);
-						}
-					}
-				}
-			}
-
-			const dish = await context.prisma.dish.update({
-				where: { id },
-				data: updateData,
-			});
-
-			return dish;
+			return DishService.updateDish(id, userId, updateData, context.prisma);
 		},
 		deleteDish: async (
 			_parent: unknown,
 			args: { id: string },
-			context: Context,
+			context: Context
 		) => {
 			const userId = requireAuth(context);
-
-			const existingDish = await context.prisma.dish.findUnique({
-				where: { id: args.id },
-			});
-
-			if (!existingDish) {
-				throw new Error('Dish not found');
-			}
-
-			const userIsAdmin = await isAdmin(userId, context.prisma);
-			
-			if (existingDish.userId !== userId && !userIsAdmin) {
-				throw new Error('Not authorized to delete this dish');
-			}
-
-			const dish = await context.prisma.dish.delete({
-				where: { id: args.id },
-			});
-
-			return dish;
+			return DishService.deleteDish(args.id, userId, context.prisma);
 		},
 	},
 	Dish: {
 		isFavorite: async (
 			parent: { id: string },
 			_args: unknown,
-			context: Context,
+			context: Context
 		) => {
-			if (!context.userId) {
-				return false;
-			}
-
-			const user = await context.prisma.user.findUnique({
-				where: { id: context.userId },
-				include: {
-					favoriteDishes: { where: { id: parent.id } },
-				},
-			});
-
-			return user?.favoriteDishes.length! > 0;
+			return DishService.checkIsFavorite(
+				parent.id,
+				context.userId ?? null,
+				context.prisma
+			);
 		},
 	},
 	Ingredient: {
@@ -223,10 +104,7 @@ export const dishResolvers = {
 			if (!parent.productId) {
 				return null;
 			}
-
-			return await context.prisma.product.findUnique({
-				where: { id: parent.productId },
-			});
+			return DishService.getIngredientProduct(parent.productId, context.prisma);
 		},
 	},
 };

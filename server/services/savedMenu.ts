@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { GraphQLError } from 'graphql';
+import { formatDateToISO } from '../shared/dateHelpers.js';
 
 export class SavedMenuService {
 	static async getSavedMenus(userId: string, prisma: PrismaClient) {
@@ -276,6 +277,109 @@ export class SavedMenuService {
 		return this.computeMenuTotals(menuWithItems);
 	}
 
+	static async applyTemplateToPlanner(
+		userId: string,
+		savedMenuId: string,
+		targetStartDate: string,
+		prisma: PrismaClient
+	) {
+		const savedMenu = await prisma.savedMenu.findUnique({
+			where: { id: savedMenuId },
+			include: {
+				items: {
+					include: { dish: true },
+				},
+			},
+		});
+
+		if (!savedMenu) {
+			throw new GraphQLError('Saved menu not found', {
+				extensions: { code: 'NOT_FOUND' },
+			});
+		}
+
+		if (savedMenu.userId !== userId) {
+			throw new GraphQLError('Not authorized to access this menu', {
+				extensions: { code: 'FORBIDDEN' },
+			});
+		}
+
+		const originalStart = savedMenu.startDate;
+		const targetStart = new Date(targetStartDate);
+		const daysDiff = Math.floor(
+			(targetStart.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24)
+		);
+
+		const newItems = savedMenu.items.map((item) => {
+			const newDate = new Date(item.date);
+			newDate.setDate(newDate.getDate() + daysDiff);
+			return {
+				dishId: item.dishId,
+				date: newDate.toISOString(),
+				mealTime: item.mealTime,
+			};
+		});
+
+		const endDate = new Date(targetStart);
+		endDate.setDate(endDate.getDate() + 7);
+
+		const incomingIds: string[] = [];
+
+		await prisma.plannerItem.deleteMany({
+			where: {
+				userId,
+				id: { notIn: incomingIds },
+				date: {
+					gte: targetStart,
+					lt: endDate,
+				},
+			},
+		});
+
+		const itemsByDate: Record<string, typeof newItems> = {};
+		newItems.forEach((item) => {
+			const dateStr = formatDateToISO(new Date(item.date));
+			if (!itemsByDate[dateStr]) itemsByDate[dateStr] = [];
+			itemsByDate[dateStr].push(item);
+		});
+
+		for (const [dateStr, dateItems] of Object.entries(itemsByDate)) {
+			const date = new Date(dateStr);
+
+			const menuPlan = await prisma.menuPlan.upsert({
+				where: {
+					userId_date: {
+						userId,
+						date,
+					},
+				},
+				update: {
+					updatedAt: new Date(),
+				},
+				create: {
+					userId,
+					date,
+				},
+			});
+
+			await Promise.all(
+				dateItems.map((item) =>
+					prisma.plannerItem.create({
+						data: {
+							userId,
+							dishId: item.dishId,
+							date: new Date(item.date),
+							mealTime: item.mealTime,
+							menuPlanId: menuPlan.id,
+						},
+					})
+				)
+			);
+		}
+
+		return true;
+	}
+
 	private static computeMenuTotals(menu: any) {
 		const totalDishes = menu.items.length;
 		const totalCalories = menu.items.reduce(
@@ -297,6 +401,8 @@ export class SavedMenuService {
 
 		return {
 			...menu,
+			startDate: formatDateToISO(menu.startDate),
+			endDate: formatDateToISO(menu.endDate),
 			totalDishes,
 			totalCalories: Math.round(totalCalories),
 			totalProtein: Math.round(totalProtein * 10) / 10,

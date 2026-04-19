@@ -1,34 +1,22 @@
 import { Context } from '../context.js';
-import { isAdmin, requireAuth } from './utils.js';
+import { requireAuth } from './utils.js';
+import { ProductService } from '../services/product.js';
 
 export const productResolvers = {
 	Query: {
 		product: async (
 			_parent: unknown,
 			args: { id: string },
-			context: Context,
+			context: Context
 		) => {
-			const product = await context.prisma.product.findUnique({
-				where: { id: args.id },
-			});
-
-			return product;
+			return ProductService.getProduct(args.id, context.prisma);
 		},
 		productByName: async (
 			_parent: unknown,
 			args: { name: string },
-			context: Context,
+			context: Context
 		) => {
-			const product = await context.prisma.product.findFirst({
-				where: { 
-					name: {
-						equals: args.name,
-						mode: 'insensitive'
-					}
-				},
-			});
-
-			return product;
+			return ProductService.getProductByName(args.name, context.prisma);
 		},
 		products: async (
 			_parent: unknown,
@@ -39,35 +27,9 @@ export const productResolvers = {
 				offset?: number;
 				userId?: string;
 			},
-			context: Context,
+			context: Context
 		) => {
-			const products = await context.prisma.product.findMany({
-				where: {
-					...(args.category && { category: args.category }),
-					...(args.search && {
-						OR: [
-							{
-								name: {
-									contains: args.search,
-									mode: 'insensitive',
-								},
-							},
-							{
-								description: {
-									contains: args.search,
-									mode: 'insensitive',
-								},
-							},
-						],
-					}),
-					...(args.userId && { userId: args.userId }),
-				},
-				take: args.limit || undefined,
-				skip: args.offset || undefined,
-				orderBy: { createdAt: 'desc' },
-			});
-
-			return products;
+			return ProductService.getProducts(args, context.prisma);
 		},
 	},
 	Mutation: {
@@ -83,18 +45,10 @@ export const productResolvers = {
 				protein?: number;
 				description?: string;
 			},
-			context: Context,
+			context: Context
 		) => {
 			const userId = requireAuth(context);
-
-			const product = await context.prisma.product.create({
-				data: {
-					...args,
-					userId,
-				},
-			});
-
-			return product;
+			return ProductService.createProduct(userId, args, context.prisma);
 		},
 		updateProduct: async (
 			_parent: unknown,
@@ -109,78 +63,32 @@ export const productResolvers = {
 				protein?: number;
 				description?: string;
 			},
-			context: Context,
+			context: Context
 		) => {
 			const userId = requireAuth(context);
-
-			const existingProduct = await context.prisma.product.findUnique({
-				where: { id: args.id },
-			});
-
-			if (!existingProduct) {
-				throw new Error('Product not found');
-			}
-
-			const userIsAdmin = await isAdmin(userId, context.prisma);
-			
-			if (existingProduct.userId !== userId && !userIsAdmin) {
-				throw new Error('Not authorized to update this product');
-			}
-
 			const { id, ...updateData } = args;
-			const product = await context.prisma.product.update({
-				where: { id },
-				data: updateData,
-			});
-
-			return product;
+			return ProductService.updateProduct(id, userId, updateData, context.prisma);
 		},
 		deleteProduct: async (
 			_parent: unknown,
 			args: { id: string },
-			context: Context,
+			context: Context
 		) => {
 			const userId = requireAuth(context);
-
-			const existingProduct = await context.prisma.product.findUnique({
-				where: { id: args.id },
-			});
-
-			if (!existingProduct) {
-				throw new Error('Product not found');
-			}
-
-			const userIsAdmin = await isAdmin(userId, context.prisma);
-			
-			if (existingProduct.userId !== userId && !userIsAdmin) {
-				throw new Error('Not authorized to delete this product');
-			}
-
-			const product = await context.prisma.product.delete({
-				where: { id: args.id },
-			});
-
-			return product;
+			return ProductService.deleteProduct(args.id, userId, context.prisma);
 		},
 	},
 	Product: {
 		isFavorite: async (
 			parent: { id: string },
 			_args: unknown,
-			context: Context,
+			context: Context
 		) => {
-			if (!context.userId) {
-				return false;
-			}
-
-			const user = await context.prisma.user.findUnique({
-				where: { id: context.userId },
-				include: {
-					favoriteProducts: { where: { id: parent.id } },
-				},
-			});
-
-			return user?.favoriteProducts.length! > 0;
+			return ProductService.checkIsFavorite(
+				parent.id,
+				context.userId ?? null,
+				context.prisma
+			);
 		},
 	},
 };

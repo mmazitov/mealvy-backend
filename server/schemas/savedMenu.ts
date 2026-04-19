@@ -49,5 +49,6 @@ export const savedMenuTypeDefs = gql`
 		): SavedMenu!
 		deleteSavedMenu(id: ID!): SavedMenu!
 		duplicateSavedMenu(id: ID!): SavedMenu!
+		applyTemplateToPlanner(savedMenuId: ID!, targetStartDate: String!): Boolean!
 	}
 `;
