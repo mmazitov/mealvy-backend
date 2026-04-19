@@ -18,19 +18,6 @@ export const plannerResolvers = {
 				context.prisma
 			);
 		},
-		getMenuPlans: async (
-			_parent: unknown,
-			args: { startDate: string; endDate: string },
-			context: Context
-		) => {
-			const userId = requireAuth(context);
-			return PlannerService.getMenuPlans(
-				userId,
-				args.startDate,
-				args.endDate,
-				context.prisma
-			);
-		},
 	},
 
 	Mutation: {

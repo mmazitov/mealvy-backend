@@ -323,12 +323,9 @@ export class SavedMenuService {
 		const endDate = new Date(targetStart);
 		endDate.setDate(endDate.getDate() + 7);
 
-		const incomingIds: string[] = [];
-
 		await prisma.plannerItem.deleteMany({
 			where: {
 				userId,
-				id: { notIn: incomingIds },
 				date: {
 					gte: targetStart,
 					lt: endDate,
@@ -336,46 +333,18 @@ export class SavedMenuService {
 			},
 		});
 
-		const itemsByDate: Record<string, typeof newItems> = {};
-		newItems.forEach((item) => {
-			const dateStr = formatDateToISO(new Date(item.date));
-			if (!itemsByDate[dateStr]) itemsByDate[dateStr] = [];
-			itemsByDate[dateStr].push(item);
-		});
-
-		for (const [dateStr, dateItems] of Object.entries(itemsByDate)) {
-			const date = new Date(dateStr);
-
-			const menuPlan = await prisma.menuPlan.upsert({
-				where: {
-					userId_date: {
+		await Promise.all(
+			newItems.map((item) =>
+				prisma.plannerItem.create({
+					data: {
 						userId,
-						date,
+						dishId: item.dishId,
+						date: new Date(item.date),
+						mealTime: item.mealTime,
 					},
-				},
-				update: {
-					updatedAt: new Date(),
-				},
-				create: {
-					userId,
-					date,
-				},
-			});
-
-			await Promise.all(
-				dateItems.map((item) =>
-					prisma.plannerItem.create({
-						data: {
-							userId,
-							dishId: item.dishId,
-							date: new Date(item.date),
-							mealTime: item.mealTime,
-							menuPlanId: menuPlan.id,
-						},
-					})
-				)
-			);
-		}
+				})
+			)
+		);
 
 		return true;
 	}

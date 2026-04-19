@@ -15,19 +15,7 @@ export const plannerTypeDefs = gql`
 		dish: Dish!
 		date: String!
 		mealTime: MealTime!
-		menuPlanId: ID
 		createdAt: String!
-	}
-
-	type MenuPlan {
-		id: ID!
-		userId: ID!
-		date: String!
-		week: Int
-		day: String
-		items: [PlannerItem!]!
-		createdAt: String!
-		updatedAt: String!
 	}
 
 	input PlannerItemInput {
@@ -39,7 +27,6 @@ export const plannerTypeDefs = gql`
 
 	extend type Query {
 		getPlannerItems(startDate: String!, endDate: String!): [PlannerItem!]!
-		getMenuPlans(startDate: String!, endDate: String!): [MenuPlan!]!
 	}
 
 	extend type Mutation {
