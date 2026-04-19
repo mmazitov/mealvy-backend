@@ -120,12 +120,9 @@ export class SavedMenuService {
 
 		const savedItems = await Promise.all(
 			plannerItems.map((item) =>
-				prisma.plannerItem.create({
+				prisma.plannerItem.update({
+					where: { id: item.id },
 					data: {
-						userId,
-						dishId: item.dishId,
-						date: item.date,
-						mealTime: item.mealTime,
 						savedMenuId: savedMenu.id,
 					},
 					include: {
