@@ -46,7 +46,7 @@ export class FamilyService {
 
     if (!currentUser) {
       throw new GraphQLError('User not found', {
-        extensions: { code: 'NOT_FOUND' },
+        extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
@@ -191,7 +191,7 @@ export class FamilyService {
 
     if (!familyMember) {
       throw new GraphQLError('Family member not found', {
-        extensions: { code: 'NOT_FOUND' },
+        extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
@@ -227,7 +227,7 @@ export class FamilyService {
 
     if (!invitation) {
       throw new GraphQLError('Invitation not found', {
-        extensions: { code: 'NOT_FOUND' },
+        extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
@@ -254,7 +254,7 @@ export class FamilyService {
 
     if (!currentUser) {
       throw new GraphQLError('User not found', {
-        extensions: { code: 'NOT_FOUND' },
+        extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
@@ -319,7 +319,7 @@ export class FamilyService {
 
     if (!invitation) {
       throw new GraphQLError('Invitation not found', {
-        extensions: { code: 'NOT_FOUND' },
+        extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 

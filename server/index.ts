@@ -4,6 +4,7 @@ import { expressMiddleware } from '@as-integrations/express4';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { json } from 'express';
+import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import depthLimit from 'graphql-depth-limit';
@@ -47,12 +48,22 @@ const buildAllowedOrigins = (): (string | RegExp)[] => {
 
 const allowedOrigins = buildAllowedOrigins();
 
+app.use(helmet());
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again later.',
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many authentication attempts, please try again later.',
 });
 
 app.use(apiLimiter);
@@ -88,6 +99,8 @@ app.use(passport.session() as any);
 app.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'Mealvy API', endpoints: { graphql: '/graphql', auth: '/auth' } });
 });
+
+app.use('/auth/refresh', authLimiter);
 
 app.post('/auth/refresh', async (req, res) => {
   const refreshToken: string | undefined = req.cookies?.refreshToken;

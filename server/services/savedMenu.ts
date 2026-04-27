@@ -2,6 +2,27 @@ import { PrismaClient } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 import { formatDateToISO } from '../shared/dateHelpers.js';
 
+export interface DishSummary {
+	id: string;
+	name: string;
+	imageUrl: string | null;
+	calories: number | null;
+	protein: number | null;
+	fat: number | null;
+	carbs: number | null;
+}
+
+export interface PlannerItemWithDish {
+	dish: DishSummary;
+}
+
+export interface MenuWithItems {
+	startDate: Date;
+	endDate: Date;
+	items: PlannerItemWithDish[];
+	[key: string]: unknown;
+}
+
 export class SavedMenuService {
 	static async getSavedMenus(userId: string, prisma: PrismaClient) {
 		const savedMenus = await prisma.savedMenu.findMany({
@@ -55,7 +76,7 @@ export class SavedMenuService {
 
 		if (!savedMenu) {
 			throw new GraphQLError('Saved menu not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 
@@ -108,39 +129,41 @@ export class SavedMenuService {
 			});
 		}
 
-		const savedMenu = await prisma.savedMenu.create({
-			data: {
-				userId,
-				name,
-				startDate: start,
-				endDate: end,
-				weekNumber,
-			},
-		});
+		const [savedMenu, savedItems] = await prisma.$transaction(async (tx) => {
+			const menu = await tx.savedMenu.create({
+				data: {
+					userId,
+					name,
+					startDate: start,
+					endDate: end,
+					weekNumber,
+				},
+			});
 
-		const savedItems = await Promise.all(
-			plannerItems.map((item) =>
-				prisma.plannerItem.update({
-					where: { id: item.id },
-					data: {
-						savedMenuId: savedMenu.id,
-					},
-					include: {
-						dish: {
-							select: {
-								id: true,
-								name: true,
-								imageUrl: true,
-								calories: true,
-								protein: true,
-								fat: true,
-								carbs: true,
+			const items = await Promise.all(
+				plannerItems.map((item) =>
+					tx.plannerItem.update({
+						where: { id: item.id },
+						data: { savedMenuId: menu.id },
+						include: {
+							dish: {
+								select: {
+									id: true,
+									name: true,
+									imageUrl: true,
+									calories: true,
+									protein: true,
+									fat: true,
+									carbs: true,
+								},
 							},
 						},
-					},
-				})
-			)
-		);
+					})
+				)
+			);
+
+			return [menu, items] as const;
+		});
 
 		const menuWithItems = {
 			...savedMenu,
@@ -174,7 +197,7 @@ export class SavedMenuService {
 
 		if (!savedMenu) {
 			throw new GraphQLError('Saved menu not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 
@@ -184,13 +207,15 @@ export class SavedMenuService {
 			});
 		}
 
-		await prisma.plannerItem.deleteMany({
-			where: { savedMenuId: id },
-		});
-
-		await prisma.savedMenu.delete({
-			where: { id },
-		});
+		await prisma.$transaction([
+			prisma.plannerItem.updateMany({
+				where: { savedMenuId: id },
+				data: { savedMenuId: null },
+			}),
+			prisma.savedMenu.delete({
+				where: { id },
+			}),
+		]);
 
 		return this.computeMenuTotals(savedMenu);
 	}
@@ -219,7 +244,7 @@ export class SavedMenuService {
 
 		if (!originalMenu) {
 			throw new GraphQLError('Saved menu not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 
@@ -291,7 +316,7 @@ export class SavedMenuService {
 
 		if (!savedMenu) {
 			throw new GraphQLError('Saved menu not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 
@@ -346,22 +371,22 @@ export class SavedMenuService {
 		return true;
 	}
 
-	private static computeMenuTotals(menu: any) {
+	private static computeMenuTotals(menu: MenuWithItems) {
 		const totalDishes = menu.items.length;
 		const totalCalories = menu.items.reduce(
-			(sum: number, item: any) => sum + (item.dish.calories || 0),
+			(sum, item) => sum + (item.dish.calories || 0),
 			0
 		);
 		const totalProtein = menu.items.reduce(
-			(sum: number, item: any) => sum + (item.dish.protein || 0),
+			(sum, item) => sum + (item.dish.protein || 0),
 			0
 		);
 		const totalFat = menu.items.reduce(
-			(sum: number, item: any) => sum + (item.dish.fat || 0),
+			(sum, item) => sum + (item.dish.fat || 0),
 			0
 		);
 		const totalCarbs = menu.items.reduce(
-			(sum: number, item: any) => sum + (item.dish.carbs || 0),
+			(sum, item) => sum + (item.dish.carbs || 0),
 			0
 		);
 

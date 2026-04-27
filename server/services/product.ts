@@ -103,7 +103,7 @@ export class ProductService {
 
 		if (!existingProduct) {
 			throw new GraphQLError('Product not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 
@@ -128,7 +128,7 @@ export class ProductService {
 
 		if (!existingProduct) {
 			throw new GraphQLError('Product not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 

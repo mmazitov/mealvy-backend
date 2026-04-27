@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
-import { JWT_SECRET } from './resolvers/utils.js';
+import { config } from './shared/config.js';
 import {
     ACCESS_TOKEN_EXPIRY,
     REFRESH_TOKEN_EXPIRY,
@@ -9,11 +9,9 @@ import {
 } from './shared/cookieHelpers.js';
 
 const router = express.Router();
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// Log OAuth configuration in development
-if (process.env.NODE_ENV !== 'production') {
-	console.log('[OAuth] CLIENT_URL:', CLIENT_URL);
+if (config.isDev) {
+    console.log('[OAuth] CLIENT_URL:', config.clientUrl);
 }
 
 // Info endpoint
@@ -26,7 +24,7 @@ router.get('/', (req, res) => {
 			facebook: '/auth/facebook-auth',
 		},
 		config: {
-			clientUrl: CLIENT_URL,
+			clientUrl: config.clientUrl,
 			nodeEnv: process.env.NODE_ENV,
 		},
 	});
@@ -46,7 +44,7 @@ const handleOAuthCallback =
               if (window.opener) {
                 window.opener.postMessage(
                   { type: 'OAUTH_ERROR', error: 'Authentication failed' },
-                  '${CLIENT_URL}'
+                  '${config.clientUrl}'
                 );
                 setTimeout(() => window.close(), 500);
               }
@@ -55,10 +53,10 @@ const handleOAuthCallback =
           `);
         }
 
-        const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+        const token = jwt.sign({ userId: user.id }, config.jwtSecret, {
           expiresIn: ACCESS_TOKEN_EXPIRY,
         });
-        const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+        const refreshToken = jwt.sign({ userId: user.id }, config.jwtSecret, {
           expiresIn: REFRESH_TOKEN_EXPIRY,
         });
 
@@ -74,7 +72,7 @@ const handleOAuthCallback =
               if (window.opener) {
                 window.opener.postMessage(
                   { type: 'OAUTH_SUCCESS' },
-                  '${CLIENT_URL}'
+                  '${config.clientUrl}'
                 );
                 setTimeout(() => window.close(), 500);
               }

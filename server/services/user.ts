@@ -9,8 +9,7 @@ import {
 	clearAuthCookies,
 	setAuthCookies,
 } from '../shared/cookieHelpers.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { config } from '../shared/config.js';
 
 interface RegisterInput {
 	email: string;
@@ -40,10 +39,10 @@ interface AuthTokens {
 export class UserService {
 	private static createTokens(userId: string): AuthTokens {
 		return {
-			accessToken: jwt.sign({ userId }, JWT_SECRET, {
+			accessToken: jwt.sign({ userId }, config.jwtSecret, {
 				expiresIn: ACCESS_TOKEN_EXPIRY,
 			}),
-			refreshToken: jwt.sign({ userId }, JWT_SECRET, {
+			refreshToken: jwt.sign({ userId }, config.jwtSecret, {
 				expiresIn: REFRESH_TOKEN_EXPIRY,
 			}),
 		};
@@ -52,9 +51,54 @@ export class UserService {
 	static async getMe(userId: string, prisma: PrismaClient) {
 		return prisma.user.findUnique({
 			where: { id: userId },
-			include: {
-				favoriteProducts: true,
-				favoriteDishes: true,
+			select: {
+				id: true,
+				role: true,
+				email: true,
+				name: true,
+				avatar: true,
+				phone: true,
+				diet: true,
+				allergy: true,
+				dislike: true,
+				createdAt: true,
+				updatedAt: true,
+				favoriteProducts: {
+					select: {
+						id: true,
+						name: true,
+						category: true,
+						imageUrl: true,
+						calories: true,
+						fat: true,
+						carbs: true,
+						protein: true,
+						description: true,
+						createdAt: true,
+						updatedAt: true,
+						userId: true,
+					},
+				},
+				favoriteDishes: {
+					select: {
+						id: true,
+						name: true,
+						category: true,
+						imageUrl: true,
+						ingredients: true,
+						instructions: true,
+						prepTime: true,
+						servings: true,
+						calories: true,
+						protein: true,
+						fat: true,
+						carbs: true,
+						description: true,
+						createdAt: true,
+						updatedAt: true,
+						userId: true,
+					},
+				},
 				_count: { select: { dishes: true, products: true } },
 			},
 		});
@@ -77,6 +121,12 @@ export class UserService {
 	}
 
 	static async register(input: RegisterInput, res: Response, prisma: PrismaClient) {
+		if (input.password.length < 6) {
+			throw new GraphQLError('Password must be at least 6 characters', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
+
 		const existing = await prisma.user.findUnique({
 			where: { email: input.email },
 		});
@@ -151,6 +201,12 @@ export class UserService {
 		newPassword: string,
 		prisma: PrismaClient
 	) {
+		if (newPassword.length < 6) {
+			throw new GraphQLError('New password must be at least 6 characters', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
+
 		const user = await prisma.user.findUnique({ where: { id: userId } });
 
 		if (!user?.password) {

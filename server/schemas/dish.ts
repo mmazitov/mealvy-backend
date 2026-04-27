@@ -43,7 +43,6 @@ export const dishTypeDefs = gql`
 			limit: Int
 			offset: Int
 		): [Dish!]!
-		favoriteDishes: [Dish!]!
 	}
 
 	extend type Mutation {
@@ -76,8 +75,6 @@ export const dishTypeDefs = gql`
 			carbs: Float
 			description: String
 		): Dish!
-		addToFavoritesDish(dishId: ID!): User!
-		removeFromFavoritesDish(dishId: ID!): User!
 		deleteDish(id: ID!): Dish!
 	}
 `;

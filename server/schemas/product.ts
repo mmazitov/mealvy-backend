@@ -26,7 +26,6 @@ export const productTypeDefs = gql`
 			limit: Int
 			offset: Int
 		): [Product!]!
-		favoriteProducts: [Product!]!
 	}
 
 	extend type Mutation {
@@ -51,8 +50,6 @@ export const productTypeDefs = gql`
 			protein: Float
 			description: String
 		): Product!
-		addToFavoritesProduct(productId: ID!): User!
-		removeFromFavoritesProduct(productId: ID!): User!
 		deleteProduct(id: ID!): Product!
 	}
 `;

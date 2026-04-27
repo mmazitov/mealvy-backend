@@ -132,7 +132,7 @@ export class DishService {
 
 		if (!existingDish) {
 			throw new GraphQLError('Dish not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 
@@ -172,7 +172,7 @@ export class DishService {
 
 		if (!existingDish) {
 			throw new GraphQLError('Dish not found', {
-				extensions: { code: 'NOT_FOUND' },
+				extensions: { code: 'BAD_USER_INPUT' },
 			});
 		}
 

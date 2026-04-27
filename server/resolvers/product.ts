@@ -84,11 +84,7 @@ export const productResolvers = {
 			_args: unknown,
 			context: Context
 		) => {
-			return ProductService.checkIsFavorite(
-				parent.id,
-				context.userId ?? null,
-				context.prisma
-			);
+			return context.loaders.productFavorite.load(parent.id);
 		},
 	},
 };

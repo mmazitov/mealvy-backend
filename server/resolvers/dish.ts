@@ -88,11 +88,7 @@ export const dishResolvers = {
 			_args: unknown,
 			context: Context
 		) => {
-			return DishService.checkIsFavorite(
-				parent.id,
-				context.userId ?? null,
-				context.prisma
-			);
+			return context.loaders.dishFavorite.load(parent.id);
 		},
 	},
 	Ingredient: {
@@ -104,7 +100,7 @@ export const dishResolvers = {
 			if (!parent.productId) {
 				return null;
 			}
-			return DishService.getIngredientProduct(parent.productId, context.prisma);
+			return context.loaders.product.load(parent.productId);
 		},
 	},
 };
