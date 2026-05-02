@@ -6,6 +6,7 @@ export interface DishSummary {
 	id: string;
 	name: string;
 	imageUrl: string | null;
+	category: string | null;
 	calories: number | null;
 	protein: number | null;
 	fat: number | null;
@@ -35,6 +36,7 @@ export class SavedMenuService {
 								id: true,
 								name: true,
 								imageUrl: true,
+								category: true,
 								calories: true,
 								protein: true,
 								fat: true,
@@ -62,6 +64,7 @@ export class SavedMenuService {
 								id: true,
 								name: true,
 								imageUrl: true,
+								category: true,
 								calories: true,
 								protein: true,
 								fat: true,
@@ -114,6 +117,7 @@ export class SavedMenuService {
 						id: true,
 						name: true,
 						imageUrl: true,
+						category: true,
 						calories: true,
 						protein: true,
 						fat: true,
@@ -151,6 +155,7 @@ export class SavedMenuService {
 									id: true,
 									name: true,
 									imageUrl: true,
+									category: true,
 									calories: true,
 									protein: true,
 									fat: true,
@@ -184,6 +189,7 @@ export class SavedMenuService {
 								id: true,
 								name: true,
 								imageUrl: true,
+								category: true,
 								calories: true,
 								protein: true,
 								fat: true,
@@ -231,6 +237,7 @@ export class SavedMenuService {
 								id: true,
 								name: true,
 								imageUrl: true,
+								category: true,
 								calories: true,
 								protein: true,
 								fat: true,
@@ -280,6 +287,7 @@ export class SavedMenuService {
 								id: true,
 								name: true,
 								imageUrl: true,
+								category: true,
 								calories: true,
 								protein: true,
 								fat: true,

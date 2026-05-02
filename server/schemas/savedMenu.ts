@@ -5,6 +5,7 @@ export const savedMenuTypeDefs = gql`
 		id: ID!
 		name: String!
 		imageUrl: String
+		category: String
 		calories: Int
 		protein: Float
 		fat: Float
