@@ -10,12 +10,21 @@ import {
 
 const router = express.Router();
 
+// Helmet's COOP: same-origin nullifies window.opener in cross-origin popups (:4000 vs :5173),
+// and its CSP blocks the inline script that calls postMessage + window.close().
+// Both are overridden only for these ephemeral popup-close pages.
+router.use((_req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+  res.setHeader('Content-Security-Policy', "script-src 'unsafe-inline'");
+  next();
+});
+
 if (config.isDev) {
     console.log('[OAuth] CLIENT_URL:', config.clientUrl);
 }
 
 // Info endpoint
-router.get('/', (req, res) => {
+router.get('/', (_req, res) => {
 	res.json({
 		message: 'OAuth Authentication',
 		providers: {
