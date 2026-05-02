@@ -3,16 +3,13 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { config } from './shared/config.js';
 import {
-    ACCESS_TOKEN_EXPIRY,
-    REFRESH_TOKEN_EXPIRY,
-    setAuthCookies,
+  ACCESS_TOKEN_EXPIRY,
+  REFRESH_TOKEN_EXPIRY,
+  setAuthCookies,
 } from './shared/cookieHelpers.js';
 
 const router = express.Router();
 
-// Helmet's COOP: same-origin nullifies window.opener in cross-origin popups (:4000 vs :5173),
-// and its CSP blocks the inline script that calls postMessage + window.close().
-// Both are overridden only for these ephemeral popup-close pages.
 router.use((_req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
   res.setHeader('Content-Security-Policy', "script-src 'unsafe-inline'");
@@ -23,7 +20,6 @@ if (config.isDev) {
     console.log('[OAuth] CLIENT_URL:', config.clientUrl);
 }
 
-// Info endpoint
 router.get('/', (_req, res) => {
 	res.json({
 		message: 'OAuth Authentication',
