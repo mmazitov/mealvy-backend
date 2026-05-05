@@ -15,6 +15,7 @@ export const userTypeDefs = gql`
     updatedAt: String!
     favoriteProducts: [Product!]!
     favoriteDishes: [Dish!]!
+    favoriteMenus: [SavedMenu!]!
     dishesCount: Int!
     productsCount: Int!
   }
@@ -47,5 +48,7 @@ export const userTypeDefs = gql`
     removeFromFavoritesProduct(productId: ID!): User!
     addToFavoritesDish(dishId: ID!): User!
     removeFromFavoritesDish(dishId: ID!): User!
+    addToFavoritesMenu(menuId: ID!): User!
+    removeFromFavoritesMenu(menuId: ID!): User!
   }
 `;

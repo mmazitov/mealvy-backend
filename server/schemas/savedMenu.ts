@@ -31,6 +31,7 @@ export const savedMenuTypeDefs = gql`
 		totalProtein: Float!
 		totalFat: Float!
 		totalCarbs: Float!
+		isFavorite: Boolean!
 		createdAt: String!
 		updatedAt: String!
 		items: [SavedMenuItem!]!

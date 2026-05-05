@@ -28,7 +28,15 @@ export class SavedMenuService {
 	static async getSavedMenus(userId: string, prisma: PrismaClient) {
 		const savedMenus = await prisma.savedMenu.findMany({
 			where: { userId },
-			include: {
+			select: {
+				id: true,
+				name: true,
+				startDate: true,
+				endDate: true,
+				weekNumber: true,
+				createdAt: true,
+				updatedAt: true,
+				favoriteByIds: true,
 				items: {
 					include: {
 						dish: {
@@ -56,7 +64,16 @@ export class SavedMenuService {
 	static async getSavedMenu(id: string, userId: string, prisma: PrismaClient) {
 		const savedMenu = await prisma.savedMenu.findUnique({
 			where: { id },
-			include: {
+			select: {
+				id: true,
+				userId: true,
+				name: true,
+				startDate: true,
+				endDate: true,
+				weekNumber: true,
+				createdAt: true,
+				updatedAt: true,
+				favoriteByIds: true,
 				items: {
 					include: {
 						dish: {
