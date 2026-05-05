@@ -150,16 +150,41 @@ export class SavedMenuService {
 			});
 		}
 
+		const existingMenu = await prisma.savedMenu.findFirst({
+			where: {
+				userId,
+				weekNumber,
+			},
+		});
+
 		const [savedMenu, savedItems] = await prisma.$transaction(async (tx) => {
-			const menu = await tx.savedMenu.create({
-				data: {
-					userId,
-					name,
-					startDate: start,
-					endDate: end,
-					weekNumber,
-				},
-			});
+			let menu;
+			
+			if (existingMenu) {
+				await tx.plannerItem.updateMany({
+					where: { savedMenuId: existingMenu.id },
+					data: { savedMenuId: null },
+				});
+
+				menu = await tx.savedMenu.update({
+					where: { id: existingMenu.id },
+					data: {
+						name,
+						startDate: start,
+						endDate: end,
+					},
+				});
+			} else {
+				menu = await tx.savedMenu.create({
+					data: {
+						userId,
+						name,
+						startDate: start,
+						endDate: end,
+						weekNumber,
+					},
+				});
+			}
 
 			const items = await Promise.all(
 				plannerItems.map((item) =>
