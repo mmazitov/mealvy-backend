@@ -1,11 +1,12 @@
 import { Context } from '../context.js';
-import { requireAuth } from './utils.js';
 import { UserService } from '../services/user.js';
+import { requireAuth } from './utils.js';
 
 export const userResolvers = {
 	User: {
 		favoriteProducts: (parent: any) => parent.favoriteProducts ?? [],
 		favoriteDishes: (parent: any) => parent.favoriteDishes ?? [],
+		favoriteMenus: (parent: any) => parent.favoriteMenus ?? [],
 		dishesCount: (parent: any) => parent._count?.dishes ?? 0,
 		productsCount: (parent: any) => parent._count?.products ?? 0,
 	},
@@ -126,6 +127,32 @@ export const userResolvers = {
 			return UserService.removeFromFavoritesDish(
 				userId,
 				args.dishId,
+				context.prisma
+			);
+		},
+
+		addToFavoritesMenu: async (
+			_parent: unknown,
+			args: { menuId: string },
+			context: Context
+		) => {
+			const userId = requireAuth(context);
+			return UserService.addToFavoritesMenu(
+				userId,
+				args.menuId,
+				context.prisma
+			);
+		},
+
+		removeFromFavoritesMenu: async (
+			_parent: unknown,
+			args: { menuId: string },
+			context: Context
+		) => {
+			const userId = requireAuth(context);
+			return UserService.removeFromFavoritesMenu(
+				userId,
+				args.menuId,
 				context.prisma
 			);
 		},

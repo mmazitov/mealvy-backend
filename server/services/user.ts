@@ -1,15 +1,15 @@
 import { PrismaClient } from '@prisma/client';
-import { GraphQLError } from 'graphql';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { Response } from 'express';
-import {
-	ACCESS_TOKEN_EXPIRY,
-	REFRESH_TOKEN_EXPIRY,
-	clearAuthCookies,
-	setAuthCookies,
-} from '../shared/cookieHelpers.js';
+import { GraphQLError } from 'graphql';
+import jwt from 'jsonwebtoken';
 import { config } from '../shared/config.js';
+import {
+    ACCESS_TOKEN_EXPIRY,
+    REFRESH_TOKEN_EXPIRY,
+    clearAuthCookies,
+    setAuthCookies,
+} from '../shared/cookieHelpers.js';
 
 interface RegisterInput {
 	email: string;
@@ -272,6 +272,28 @@ export class UserService {
 		return prisma.user.update({
 			where: { id: userId },
 			data: { favoriteDishes: { disconnect: { id: dishId } } },
+		});
+	}
+
+	static async addToFavoritesMenu(
+		userId: string,
+		menuId: string,
+		prisma: PrismaClient
+	) {
+		return prisma.user.update({
+			where: { id: userId },
+			data: { favoriteMenus: { connect: { id: menuId } } },
+		});
+	}
+
+	static async removeFromFavoritesMenu(
+		userId: string,
+		menuId: string,
+		prisma: PrismaClient
+	) {
+		return prisma.user.update({
+			where: { id: userId },
+			data: { favoriteMenus: { disconnect: { id: menuId } } },
 		});
 	}
 }

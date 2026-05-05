@@ -1,8 +1,15 @@
 import { Context } from '../context.js';
-import { requireAuth } from './utils.js';
 import { SavedMenuService } from '../services/savedMenu.js';
+import { requireAuth } from './utils.js';
 
 export const savedMenuResolvers = {
+	SavedMenu: {
+		isFavorite: async (parent: any, _args: unknown, context: Context) => {
+			const userId = context.userId;
+			if (!userId) return false;
+			return parent.favoriteByIds?.includes(userId) ?? false;
+		},
+	},
 	Query: {
 		savedMenus: async (_parent: unknown, _args: unknown, context: Context) => {
 			const userId = requireAuth(context);
