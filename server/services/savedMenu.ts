@@ -349,6 +349,107 @@ export class SavedMenuService {
 		return this.computeMenuTotals(menuWithItems);
 	}
 
+	static async updateSavedMenu(
+		id: string,
+		userId: string,
+		name: string,
+		startDate: string,
+		endDate: string,
+		prisma: PrismaClient
+	) {
+		const savedMenu = await prisma.savedMenu.findUnique({
+			where: { id },
+			include: {
+				items: {
+					include: {
+						dish: {
+							select: {
+								id: true,
+								name: true,
+								imageUrl: true,
+								category: true,
+								calories: true,
+								protein: true,
+								fat: true,
+								carbs: true,
+							},
+						},
+					},
+				},
+			},
+		});
+
+		if (!savedMenu) {
+			throw new GraphQLError('Saved menu not found', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
+
+		if (savedMenu.userId !== userId) {
+			throw new GraphQLError('Not authorized to update this menu', {
+				extensions: { code: 'FORBIDDEN' },
+			});
+		}
+
+		const start = new Date(startDate);
+		const end = new Date(endDate);
+
+		const originalStart = savedMenu.startDate;
+		const daysDiff = Math.floor(
+			(start.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24)
+		);
+
+		const updatedMenu = await prisma.$transaction(async (tx) => {
+			const menu = await tx.savedMenu.update({
+				where: { id },
+				data: {
+					name,
+					startDate: start,
+					endDate: end,
+				},
+			});
+
+			if (daysDiff !== 0) {
+				await Promise.all(
+					savedMenu.items.map((item) => {
+						const newDate = new Date(item.date);
+						newDate.setDate(newDate.getDate() + daysDiff);
+						return tx.plannerItem.update({
+							where: { id: item.id },
+							data: { date: newDate },
+						});
+					})
+				);
+			}
+
+			const updatedItems = await tx.plannerItem.findMany({
+				where: { savedMenuId: id },
+				include: {
+					dish: {
+						select: {
+							id: true,
+							name: true,
+							imageUrl: true,
+							category: true,
+							calories: true,
+							protein: true,
+							fat: true,
+							carbs: true,
+						},
+					},
+				},
+				orderBy: [{ date: 'asc' }, { mealTime: 'asc' }],
+			});
+
+			return {
+				...menu,
+				items: updatedItems,
+			};
+		});
+
+		return this.computeMenuTotals(updatedMenu);
+	}
+
 	static async applyTemplateToPlanner(
 		userId: string,
 		savedMenuId: string,

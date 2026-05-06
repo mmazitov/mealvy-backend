@@ -49,6 +49,12 @@ export const savedMenuTypeDefs = gql`
 			endDate: String!
 			weekNumber: Int!
 		): SavedMenu!
+		updateSavedMenu(
+			id: ID!
+			name: String!
+			startDate: String!
+			endDate: String!
+		): SavedMenu!
 		deleteSavedMenu(id: ID!): SavedMenu!
 		duplicateSavedMenu(id: ID!): SavedMenu!
 		applyTemplateToPlanner(savedMenuId: ID!, targetStartDate: String!): Boolean!
