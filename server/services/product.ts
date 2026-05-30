@@ -107,12 +107,13 @@ export class ProductService {
 			});
 		}
 
-		const userIsAdmin = await this.isUserAdmin(userId, prisma);
-
-		if (existingProduct.userId !== userId && !userIsAdmin) {
-			throw new GraphQLError('Not authorized to update this product', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+		if (existingProduct.userId !== userId) {
+			const userIsAdmin = await this.isUserAdmin(userId, prisma);
+			if (!userIsAdmin) {
+				throw new GraphQLError('Not authorized to update this product', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
 		return prisma.product.update({
@@ -132,12 +133,13 @@ export class ProductService {
 			});
 		}
 
-		const userIsAdmin = await this.isUserAdmin(userId, prisma);
-
-		if (existingProduct.userId !== userId && !userIsAdmin) {
-			throw new GraphQLError('Not authorized to delete this product', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+		if (existingProduct.userId !== userId) {
+			const userIsAdmin = await this.isUserAdmin(userId, prisma);
+			if (!userIsAdmin) {
+				throw new GraphQLError('Not authorized to delete this product', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
 		return prisma.product.delete({

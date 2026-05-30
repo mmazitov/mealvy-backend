@@ -186,28 +186,29 @@ export class SavedMenuService {
 				});
 			}
 
-			const items = await Promise.all(
-				plannerItems.map((item) =>
-					tx.plannerItem.update({
-						where: { id: item.id },
-						data: { savedMenuId: menu.id },
-						include: {
-							dish: {
-								select: {
-									id: true,
-									name: true,
-									imageUrl: true,
-									category: true,
-									calories: true,
-									protein: true,
-									fat: true,
-									carbs: true,
-								},
-							},
+			await tx.plannerItem.updateMany({
+				where: { id: { in: plannerItems.map((i) => i.id) } },
+				data: { savedMenuId: menu.id },
+			});
+
+			const items = await tx.plannerItem.findMany({
+				where: { savedMenuId: menu.id },
+				include: {
+					dish: {
+						select: {
+							id: true,
+							name: true,
+							imageUrl: true,
+							category: true,
+							calories: true,
+							protein: true,
+							fat: true,
+							carbs: true,
 						},
-					})
-				)
-			);
+					},
+				},
+				orderBy: [{ date: 'asc' }, { mealTime: 'asc' }],
+			});
 
 			return [menu, items] as const;
 		});
@@ -313,33 +314,34 @@ export class SavedMenuService {
 			},
 		});
 
-		const duplicatedItems = await Promise.all(
-			originalMenu.items.map((item) =>
-				prisma.plannerItem.create({
-					data: {
-						userId,
-						dishId: item.dishId,
-						date: item.date,
-						mealTime: item.mealTime,
-						savedMenuId: duplicatedMenu.id,
+		await prisma.plannerItem.createMany({
+			data: originalMenu.items.map((item) => ({
+				userId,
+				dishId: item.dishId,
+				date: item.date,
+				mealTime: item.mealTime,
+				savedMenuId: duplicatedMenu.id,
+			})),
+		});
+
+		const duplicatedItems = await prisma.plannerItem.findMany({
+			where: { savedMenuId: duplicatedMenu.id },
+			include: {
+				dish: {
+					select: {
+						id: true,
+						name: true,
+						imageUrl: true,
+						category: true,
+						calories: true,
+						protein: true,
+						fat: true,
+						carbs: true,
 					},
-					include: {
-						dish: {
-							select: {
-								id: true,
-								name: true,
-								imageUrl: true,
-								category: true,
-								calories: true,
-								protein: true,
-								fat: true,
-								carbs: true,
-							},
-						},
-					},
-				})
-			)
-		);
+				},
+			},
+			orderBy: [{ date: 'asc' }, { mealTime: 'asc' }],
+		});
 
 		const menuWithItems = {
 			...duplicatedMenu,
@@ -506,18 +508,14 @@ export class SavedMenuService {
 			},
 		});
 
-		await Promise.all(
-			newItems.map((item) =>
-				prisma.plannerItem.create({
-					data: {
-						userId,
-						dishId: item.dishId,
-						date: new Date(item.date),
-						mealTime: item.mealTime,
-					},
-				})
-			)
-		);
+		await prisma.plannerItem.createMany({
+			data: newItems.map((item) => ({
+				userId,
+				dishId: item.dishId,
+				date: new Date(item.date),
+				mealTime: item.mealTime,
+			})),
+		});
 
 		return true;
 	}

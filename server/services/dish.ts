@@ -98,18 +98,7 @@ export class DishService {
 		prisma: PrismaClient
 	) {
 		if (input.ingredients) {
-			for (const ing of input.ingredients) {
-				if (ing.productId) {
-					const product = await prisma.product.findUnique({
-						where: { id: ing.productId },
-					});
-					if (!product) {
-						throw new GraphQLError(`Product with id ${ing.productId} not found`, {
-							extensions: { code: 'BAD_USER_INPUT' },
-						});
-					}
-				}
-			}
+			await DishService.validateIngredientProductIds(input.ingredients, prisma);
 		}
 
 		return prisma.dish.create({
@@ -136,27 +125,17 @@ export class DishService {
 			});
 		}
 
-		const userIsAdmin = await this.isUserAdmin(userId, prisma);
-
-		if (existingDish.userId !== userId && !userIsAdmin) {
-			throw new GraphQLError('Not authorized to update this dish', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+		if (existingDish.userId !== userId) {
+			const userIsAdmin = await this.isUserAdmin(userId, prisma);
+			if (!userIsAdmin) {
+				throw new GraphQLError('Not authorized to update this dish', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
 		if (input.ingredients) {
-			for (const ing of input.ingredients) {
-				if (ing.productId) {
-					const product = await prisma.product.findUnique({
-						where: { id: ing.productId },
-					});
-					if (!product) {
-						throw new GraphQLError(`Product with id ${ing.productId} not found`, {
-							extensions: { code: 'BAD_USER_INPUT' },
-						});
-					}
-				}
-			}
+			await DishService.validateIngredientProductIds(input.ingredients, prisma);
 		}
 
 		return prisma.dish.update({
@@ -176,12 +155,13 @@ export class DishService {
 			});
 		}
 
-		const userIsAdmin = await this.isUserAdmin(userId, prisma);
-
-		if (existingDish.userId !== userId && !userIsAdmin) {
-			throw new GraphQLError('Not authorized to delete this dish', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+		if (existingDish.userId !== userId) {
+			const userIsAdmin = await this.isUserAdmin(userId, prisma);
+			if (!userIsAdmin) {
+				throw new GraphQLError('Not authorized to delete this dish', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
 		return prisma.dish.delete({
@@ -220,5 +200,30 @@ export class DishService {
 			select: { role: true },
 		});
 		return user?.role === 'ADMIN';
+	}
+
+	private static async validateIngredientProductIds(
+		ingredients: IngredientInput[],
+		prisma: PrismaClient
+	): Promise<void> {
+		const productIds = ingredients
+			.map((ing) => ing.productId)
+			.filter((id): id is string => Boolean(id));
+
+		if (productIds.length === 0) return;
+
+		// NOTE: Duplicate productIds are allowed — two ingredients can reference the same product.
+		const found = await prisma.product.findMany({
+			where: { id: { in: productIds } },
+			select: { id: true },
+		});
+		const foundIds = new Set(found.map((p) => p.id));
+		for (const id of productIds) {
+			if (!foundIds.has(id)) {
+				throw new GraphQLError(`Product with id ${id} not found`, {
+					extensions: { code: 'BAD_USER_INPUT' },
+				});
+			}
+		}
 	}
 }

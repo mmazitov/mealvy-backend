@@ -127,6 +127,8 @@ model PlannerItem {
   date        DateTime
   mealTime    MealTime
   createdAt   DateTime   @default(now())
+
+  @@index([userId, date])
 }
 
 model SavedMenu {
@@ -142,6 +144,8 @@ model SavedMenu {
   favoriteBy    User[]        @relation("UserFavoriteMenus", fields: [favoriteByIds], references: [id])
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  @@index([userId, weekNumber])
 }
 
 enum MealTime {
