@@ -5,44 +5,37 @@ import { EmailService } from './email.js';
 
 export class FamilyService {
   static async getFamilyMembers(userId: string, prisma: PrismaClient) {
-    // Get accepted family members
-    const familyRelations = await prisma.familyMember.findMany({
-      where: { userId },
-      include: {
-        member: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            _count: {
-              select: { savedMenus: true },
+    const [familyRelations, pendingInvitations, currentUser] = await Promise.all([
+      prisma.familyMember.findMany({
+        where: { userId },
+        include: {
+          member: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              _count: { select: { savedMenus: true } },
             },
           },
         },
-      },
-    });
-
-    // Get pending invitations
-    const pendingInvitations = await prisma.familyInvitation.findMany({
-      where: {
-        inviterId: userId,
-        status: InvitationStatus.PENDING,
-        expiresAt: { gte: new Date() },
-      },
-    });
-
-    // Get current user info
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        _count: {
-          select: { savedMenus: true },
+      }),
+      prisma.familyInvitation.findMany({
+        where: {
+          inviterId: userId,
+          status: InvitationStatus.PENDING,
+          expiresAt: { gte: new Date() },
         },
-      },
-    });
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          _count: { select: { savedMenus: true } },
+        },
+      }),
+    ]);
 
     if (!currentUser) {
       throw new GraphQLError('User not found', {

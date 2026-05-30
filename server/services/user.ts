@@ -78,6 +78,7 @@ export class UserService {
 						updatedAt: true,
 						userId: true,
 					},
+					take: 50,
 				},
 				favoriteDishes: {
 					select: {
@@ -98,6 +99,7 @@ export class UserService {
 						updatedAt: true,
 						userId: true,
 					},
+					take: 50,
 				},
 				_count: { select: { dishes: true, products: true } },
 			},
