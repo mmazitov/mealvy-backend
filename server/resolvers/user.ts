@@ -50,7 +50,7 @@ export const userResolvers = {
 		},
 
 		logout: async (_parent: unknown, _args: unknown, context: Context) => {
-			return UserService.logout(context.res);
+			return UserService.logout(context.res, context.refreshToken, context.prisma);
 		},
 
 		updateProfile: async (

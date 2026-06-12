@@ -1,6 +1,7 @@
 import { InvitationStatus, PrismaClient } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 import { config } from '../shared/config.js';
+import { logger } from '../shared/logger.js';
 import { EmailService } from './email.js';
 
 export class FamilyService {
@@ -156,7 +157,7 @@ export class FamilyService {
     
     // Send email asynchronously (don't wait for it)
     EmailService.sendFamilyInvitation(email, inviterName, invitationLink).catch((error) => {
-      console.error('Failed to send invitation email:', error);
+      logger.error({ err: error }, 'Failed to send invitation email');
     });
 
     return {

@@ -1,8 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Response, Request } from 'express';
-import jwt from 'jsonwebtoken';
-import { config } from './shared/config.js';
 import { DataLoaders, createLoaders } from './shared/dataLoaders.js';
+import { verifyAccessToken } from './shared/tokens.js';
 
 export const prisma = new PrismaClient();
 
@@ -10,6 +9,7 @@ export interface Context {
     prisma: PrismaClient;
     userId?: string;
     res: Response;
+    refreshToken?: string;
     loaders: DataLoaders;
 }
 
@@ -22,17 +22,9 @@ export const createContext = async (contextArg: ContextArg | Request): Promise<C
     const req = (contextArg as ContextArg)?.req || (contextArg as Request);
     const res = (contextArg as ContextArg)?.res;
     const token: string = req?.cookies?.token || '';
+    const refreshToken: string | undefined = req?.cookies?.refreshToken;
 
-    let userId: string | undefined;
+    const userId = token ? verifyAccessToken(token) : undefined;
 
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
-            userId = decoded.userId;
-        } catch {
-            // Invalid or expired token
-        }
-    }
-
-    return { prisma, userId, res, loaders: createLoaders(userId, prisma) };
+    return { prisma, userId, res, refreshToken, loaders: createLoaders(userId, prisma) };
 };

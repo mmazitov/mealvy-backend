@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 
+const MAX_QUERY_LIMIT = 200;
+
 interface CreateProductInput {
 	name: string;
 	category?: string;
@@ -72,7 +74,8 @@ export class ProductService {
 				}),
 				...(filters.userId && { userId: filters.userId }),
 			},
-			take: filters.limit || undefined,
+			// Unbounded reads are a DoS vector — cap even when no limit is passed
+			take: Math.min(filters.limit || MAX_QUERY_LIMIT, MAX_QUERY_LIMIT),
 			skip: filters.offset || undefined,
 			orderBy: { createdAt: 'desc' },
 		});

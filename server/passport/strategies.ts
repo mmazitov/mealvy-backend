@@ -7,24 +7,44 @@ import { prisma } from '../context.js';
 async function findOrCreateUserFromOAuth(
 	provider: string,
 	profileId: string,
-	profile: { emails?: { value: string }[], displayName?: string, username?: string, photos?: { value: string }[] }
+	profile: {
+		emails?: { value: string }[];
+		displayName?: string;
+		username?: string;
+		photos?: { value: string }[];
+	},
+	// Linking by email is an account-takeover vector when the provider hasn't
+	// verified the address (attacker registers victim's email at the provider)
+	isEmailVerified: boolean,
 ) {
 	let account = await prisma.account.findUnique({
-		where: { provider_providerAccountId: { provider, providerAccountId: profileId } },
+		where: {
+			provider_providerAccountId: { provider, providerAccountId: profileId },
+		},
 		include: { user: true },
 	});
 
 	if (account) return account.user;
 
+	const email = profile.emails?.[0]?.value;
+
 	let user;
-	if (profile.emails?.[0]?.value) {
-		user = await prisma.user.findUnique({ where: { email: profile.emails[0].value } });
+	if (email) {
+		const existing = await prisma.user.findUnique({ where: { email } });
+		if (existing && !isEmailVerified) {
+			throw new Error(
+				`Email ${email} is already registered. Sign in with your original method first.`,
+			);
+		}
+		user = existing ?? undefined;
 	}
 
 	if (!user) {
 		user = await prisma.user.create({
 			data: {
-				email: profile.emails?.[0]?.value,
+				// Unverified emails are not stored — otherwise this account would
+				// block (or hijack) the real owner's future registration
+				email: isEmailVerified ? email : undefined,
 				name: profile.displayName || profile.username,
 				...(profile.photos?.[0]?.value && {
 					avatar: profile.photos[0].value,
@@ -54,7 +74,18 @@ passport.use(
 		},
 		async (accessToken, refreshToken, profile, done) => {
 			try {
-				const user = await findOrCreateUserFromOAuth('google', profile.id, profile);
+				// Google reports verification per email entry
+				const isEmailVerified =
+					(profile.emails?.[0] as { verified?: boolean | string } | undefined)
+						?.verified === true ||
+					(profile._json as { email_verified?: boolean } | undefined)
+						?.email_verified === true;
+				const user = await findOrCreateUserFromOAuth(
+					'google',
+					profile.id,
+					profile,
+					isEmailVerified,
+				);
 				return done(null, user);
 			} catch (error) {
 				return done(error);
@@ -79,7 +110,13 @@ passport.use(
 			done: any,
 		) => {
 			try {
-				const user = await findOrCreateUserFromOAuth('github', profile.id.toString(), profile);
+				// passport-github2 exposes no verification flag — treat as unverified
+				const user = await findOrCreateUserFromOAuth(
+					'github',
+					profile.id.toString(),
+					profile,
+					false,
+				);
 				return done(null, user);
 			} catch (error) {
 				return done(error);
@@ -100,7 +137,13 @@ passport.use(
 		},
 		async (accessToken, refreshToken, profile, done) => {
 			try {
-				const user = await findOrCreateUserFromOAuth('facebook', profile.id, profile);
+				// Facebook only returns confirmed email addresses
+				const user = await findOrCreateUserFromOAuth(
+					'facebook',
+					profile.id,
+					profile,
+					true,
+				);
 				return done(null, user);
 			} catch (error) {
 				return done(error);
@@ -108,18 +151,3 @@ passport.use(
 		},
 	),
 );
-
-passport.serializeUser((user: any, done) => {
-	done(null, user.id);
-});
-
-passport.deserializeUser(async (id: string, done) => {
-	try {
-		const user = await prisma.user.findUnique({
-			where: { id },
-		});
-		done(null, user);
-	} catch (error) {
-		done(error);
-	}
-});

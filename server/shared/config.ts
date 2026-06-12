@@ -27,10 +27,6 @@ export const config = {
     ? (process.env.JWT_SECRET || 'supersecret-dev-only')
     : required('JWT_SECRET'),
 
-  sessionSecret: isDev
-    ? (process.env.SESSION_SECRET || 'session-dev-only')
-    : required('SESSION_SECRET'),
-
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   cookieDomain: process.env.COOKIE_DOMAIN || (isDev ? undefined : '.mealvy.app'),
 
