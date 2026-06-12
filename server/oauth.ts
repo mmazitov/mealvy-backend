@@ -1,23 +1,27 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import passport from 'passport';
+import { prisma } from './context.js';
 import { config } from './shared/config.js';
-import {
-  ACCESS_TOKEN_EXPIRY,
-  REFRESH_TOKEN_EXPIRY,
-  setAuthCookies,
-} from './shared/cookieHelpers.js';
+import { setAuthCookies } from './shared/cookieHelpers.js';
+import { logger } from './shared/logger.js';
+import { createTokenPair } from './shared/tokens.js';
 
 const router = express.Router();
 
-router.use((_req, res, next) => {
+// Callback pages run an inline postMessage script and must keep a reference
+// to window.opener — relax headers ONLY there, not on the whole /auth router
+const popupHeaders = (
+  _req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
   res.setHeader('Content-Security-Policy', "script-src 'unsafe-inline'");
   next();
-});
+};
 
 if (config.isDev) {
-    console.log('[OAuth] CLIENT_URL:', config.clientUrl);
+    logger.debug({ clientUrl: config.clientUrl }, '[OAuth] client URL');
 }
 
 router.get('/', (_req, res) => {
@@ -40,9 +44,9 @@ const handleOAuthCallback =
     passport.authenticate(
       provider,
       { session: false },
-      (err: any, user: any) => {
+      async (err: any, user: any) => {
         if (err || !user) {
-          console.error(`[OAuth] ${provider} authentication failed:`, err);
+          logger.error({ err, provider }, '[OAuth] authentication failed');
           return res.status(401).send(`
             <!DOCTYPE html><html><body>
             <script>
@@ -58,14 +62,9 @@ const handleOAuthCallback =
           `);
         }
 
-        const token = jwt.sign({ userId: user.id }, config.jwtSecret, {
-          expiresIn: ACCESS_TOKEN_EXPIRY,
-        });
-        const refreshToken = jwt.sign({ userId: user.id }, config.jwtSecret, {
-          expiresIn: REFRESH_TOKEN_EXPIRY,
-        });
+        const { accessToken, refreshToken } = await createTokenPair(user.id, prisma);
 
-        setAuthCookies(res, token, refreshToken);
+        setAuthCookies(res, accessToken, refreshToken);
 
         res.send(`
           <!DOCTYPE html>
@@ -93,18 +92,18 @@ router.get('/google-auth',
 	passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-router.get('/google/callback', handleOAuthCallback('google'));
+router.get('/google/callback', popupHeaders, handleOAuthCallback('google'));
 
 router.get('/github-auth',
 	passport.authenticate('github', { scope: ['user:email'] })
 );
 
-router.get('/github/callback', handleOAuthCallback('github'));
+router.get('/github/callback', popupHeaders, handleOAuthCallback('github'));
 
 router.get('/facebook-auth',
 	passport.authenticate('facebook', { scope: ['email'] })
 );
 
-router.get('/facebook/callback', handleOAuthCallback('facebook'));
+router.get('/facebook/callback', popupHeaders, handleOAuthCallback('facebook'));
 
 export default router;

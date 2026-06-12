@@ -1,11 +1,22 @@
 import nodemailer from 'nodemailer';
 import { config } from '../shared/config.js';
+import { logger } from '../shared/logger.js';
 
 interface SendEmailParams {
   to: string;
   subject: string;
   html: string;
 }
+
+// inviterName is user-controlled (profile name) — escape it before inserting
+// into the HTML template to prevent phishing via injected markup
+const escapeHtml = (text: string): string =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 const FAMILY_INVITATION_TEMPLATE = `<!DOCTYPE html>
 <html>
@@ -69,10 +80,10 @@ export class EmailService {
         html,
       });
 
-      console.log('Email sent:', info.messageId);
+      logger.info({ messageId: info.messageId }, 'Email sent');
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('Email sending failed:', error);
+      logger.error({ err: error }, 'Email sending failed');
       return { success: false, error };
     }
   }
@@ -85,8 +96,8 @@ export class EmailService {
     const subject = `${inviterName} запрошує вас до сім'ї в Mealvy`;
     
     const html = FAMILY_INVITATION_TEMPLATE
-      .replace(/{{inviterName}}/g, inviterName)
-      .replace(/{{invitationLink}}/g, invitationLink);
+      .replace(/{{inviterName}}/g, () => escapeHtml(inviterName))
+      .replace(/{{invitationLink}}/g, () => invitationLink);
 
     return this.sendEmail({
       to: inviteeEmail,
