@@ -11,6 +11,10 @@ primary_region = 'ams'
 
 [env]
   PORT = "8080"
+  # Drives config.isDev=false at runtime so the logger skips the pino-pretty dev
+  # transport (absent from production deps). Set here, not only in the Dockerfile,
+  # so it applies as machine config on deploy regardless of image build/caching.
+  NODE_ENV = "production"
 
 [http_service]
   internal_port = 8080
