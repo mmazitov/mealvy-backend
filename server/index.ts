@@ -160,7 +160,7 @@ app.use('/auth', oauthRouter);
 const server = new ApolloServer<Context>({
   typeDefs,
   resolvers,
-  introspection: config.isDev,
+  introspection: true, // Required for Vercel frontend builds
   plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
   validationRules: [depthLimit(7)],
 });
