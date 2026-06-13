@@ -157,11 +157,42 @@ app.post('/auth/logout', async (req, res) => {
 
 app.use('/auth', oauthRouter);
 
+// Plugin to restrict introspection to trusted origins only
+const restrictIntrospectionPlugin = {
+  async requestDidStart() {
+    return {
+      async didResolveOperation(requestContext: any) {
+        const { request, contextValue } = requestContext;
+        
+        // Check if this is an introspection query
+        const isIntrospection = 
+          request.operationName === 'IntrospectionQuery' ||
+          request.query?.includes('__schema') ||
+          request.query?.includes('__type');
+        
+        if (isIntrospection) {
+          const origin = contextValue.req?.headers?.origin;
+          
+          // Allow introspection from:
+          // 1. Trusted origins (browser requests)
+          // 2. No origin header (CLI tools like GraphQL Codegen during build)
+          if (origin && !allowedOrigins.includes(origin)) {
+            throw new Error('Introspection is not allowed from this origin');
+          }
+        }
+      },
+    };
+  },
+};
+
 const server = new ApolloServer<Context>({
   typeDefs,
   resolvers,
   introspection: true, // Required for Vercel frontend builds
-  plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  plugins: [
+    ApolloServerPluginDrainHttpServer({ httpServer }),
+    restrictIntrospectionPlugin,
+  ],
   validationRules: [depthLimit(7)],
 });
 
