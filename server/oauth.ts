@@ -29,8 +29,6 @@ router.get('/', (_req, res) => {
 		message: 'OAuth Authentication',
 		providers: {
 			google: '/auth/google-auth',
-			github: '/auth/github-auth',
-			facebook: '/auth/facebook-auth',
 		},
 		config: {
 			clientUrl: config.clientUrl,
@@ -93,17 +91,5 @@ router.get('/google-auth',
 );
 
 router.get('/google/callback', popupHeaders, handleOAuthCallback('google'));
-
-router.get('/github-auth',
-	passport.authenticate('github', { scope: ['user:email'] })
-);
-
-router.get('/github/callback', popupHeaders, handleOAuthCallback('github'));
-
-router.get('/facebook-auth',
-	passport.authenticate('facebook', { scope: ['email'] })
-);
-
-router.get('/facebook/callback', popupHeaders, handleOAuthCallback('facebook'));
 
 export default router;
