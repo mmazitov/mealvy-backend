@@ -1,6 +1,4 @@
 import passport from 'passport';
-import { Strategy as FacebookStrategy } from 'passport-facebook';
-import { Strategy as GitHubStrategy } from 'passport-github2';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { prisma } from '../context.js';
 
@@ -85,64 +83,6 @@ passport.use(
 					profile.id,
 					profile,
 					isEmailVerified,
-				);
-				return done(null, user);
-			} catch (error) {
-				return done(error);
-			}
-		},
-	),
-);
-
-passport.use(
-	new GitHubStrategy(
-		{
-			clientID: process.env.GITHUB_CLIENT_ID!,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-			callbackURL:
-				process.env.GITHUB_CALLBACK_URL ||
-				'http://localhost:4000/auth/github/callback',
-		},
-		async (
-			accessToken: string,
-			refreshToken: string,
-			profile: any,
-			done: any,
-		) => {
-			try {
-				// passport-github2 exposes no verification flag — treat as unverified
-				const user = await findOrCreateUserFromOAuth(
-					'github',
-					profile.id.toString(),
-					profile,
-					false,
-				);
-				return done(null, user);
-			} catch (error) {
-				return done(error);
-			}
-		},
-	),
-);
-
-passport.use(
-	new FacebookStrategy(
-		{
-			clientID: process.env.FACEBOOK_APP_ID!,
-			clientSecret: process.env.FACEBOOK_APP_SECRET!,
-			callbackURL:
-				process.env.FACEBOOK_CALLBACK_URL ||
-				'http://localhost:4000/auth/facebook/callback',
-			profileFields: ['id', 'displayName', 'photos', 'email'],
-		},
-		async (accessToken, refreshToken, profile, done) => {
-			try {
-				// Facebook only returns confirmed email addresses
-				const user = await findOrCreateUserFromOAuth(
-					'facebook',
-					profile.id,
-					profile,
-					true,
 				);
 				return done(null, user);
 			} catch (error) {
