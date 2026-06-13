@@ -24,6 +24,9 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+# Drives config.isDev=false so the logger skips the pino-pretty dev transport
+ENV NODE_ENV=production
+
 # Copy package files
 COPY package*.json ./
 COPY yarn.lock* ./
