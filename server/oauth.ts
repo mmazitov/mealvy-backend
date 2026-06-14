@@ -47,14 +47,22 @@ const handleOAuthCallback =
           logger.error({ err, provider }, '[OAuth] authentication failed');
           return res.status(401).send(`
             <!DOCTYPE html><html><body>
+            <h3>Authentication failed. Closing window...</h3>
             <script>
-              if (window.opener) {
-                window.opener.postMessage(
-                  { type: 'OAUTH_ERROR', error: 'Authentication failed' },
-                  '${config.clientUrl}'
-                );
-                setTimeout(() => window.close(), 500);
-              }
+              // Google's sign-in pages send a COOP header that severs window.opener
+              // during the redirect chain, so postMessage is best-effort only.
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage(
+                    { type: 'OAUTH_ERROR', error: 'Authentication failed' },
+                    '${config.clientUrl}'
+                  );
+                }
+              } catch (e) {}
+              // Close unconditionally; if the browser blocks it (COOP), navigate to
+              // the app so the user is not stranded on this page.
+              window.close();
+              setTimeout(function () { window.location.replace('${config.clientUrl}'); }, 250);
             </script>
             </body></html>
           `);
@@ -71,13 +79,20 @@ const handleOAuthCallback =
           <body>
             <h3>Authentication successful! Closing window...</h3>
             <script>
-              if (window.opener) {
-                window.opener.postMessage(
-                  { type: 'OAUTH_SUCCESS' },
-                  '${config.clientUrl}'
-                );
-                setTimeout(() => window.close(), 500);
-              }
+              // Google's sign-in pages send a COOP header that severs window.opener
+              // during the redirect chain, so postMessage is best-effort only.
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage(
+                    { type: 'OAUTH_SUCCESS' },
+                    '${config.clientUrl}'
+                  );
+                }
+              } catch (e) {}
+              // Close unconditionally; if the browser blocks it (COOP), navigate to
+              // the app where the cookie just set logs the user in.
+              window.close();
+              setTimeout(function () { window.location.replace('${config.clientUrl}'); }, 250);
             </script>
           </body>
           </html>
