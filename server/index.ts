@@ -6,6 +6,12 @@ import cors from 'cors';
 import express, { json, Request } from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import {
+  GraphQLError,
+  parse,
+  type ASTVisitor,
+  type ValidationContext,
+} from 'graphql';
 import depthLimit from 'graphql-depth-limit';
 import http from 'http';
 import passport from 'passport';
@@ -52,7 +58,14 @@ const buildAllowedOrigins = (): string[] => {
 
 const allowedOrigins = buildAllowedOrigins();
 
-app.use(helmet());
+app.use(
+  helmet({
+    // HSTS only in production (localhost is plain http); 2 years + preload-eligible
+    hsts: config.isDev
+      ? false
+      : { maxAge: 63072000, includeSubDomains: true, preload: true },
+  })
+);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -91,14 +104,41 @@ app.get('/', (_req, res) => {
 
 // Login/register/changePassword go through /graphql, so the global apiLimiter
 // (1000 req/15 min) is far too generous for brute force — apply the strict
-// limiter whenever the GraphQL document contains an auth operation.
+// limiter whenever the GraphQL document selects an auth mutation.
 // inviteFamilyMember is included because it sends emails to arbitrary addresses.
-const isAuthOperation = (req: Request): boolean => {
-  const query = req.body?.query;
-  return (
-    typeof query === 'string' &&
-    /\b(login|register|changePassword|inviteFamilyMember)\b/.test(query)
+const AUTH_OPERATIONS = new Set([
+  'login',
+  'register',
+  'changePassword',
+  'inviteFamilyMember',
+]);
+
+// Parse the actual operation AST instead of regex-matching the raw body: aliases,
+// comments, and field names in unrelated fragments can't trip or evade this.
+const selectsAuthMutation = (query: string): boolean => {
+  let document;
+  try {
+    document = parse(query);
+  } catch {
+    // Unparseable — Apollo will reject it; it can't be a valid auth mutation
+    return false;
+  }
+  return document.definitions.some(
+    (def) =>
+      def.kind === 'OperationDefinition' &&
+      def.operation === 'mutation' &&
+      def.selectionSet.selections.some(
+        (sel) => sel.kind === 'Field' && AUTH_OPERATIONS.has(sel.name.value)
+      )
   );
+};
+
+const isAuthOperation = (req: Request): boolean => {
+  const body = req.body;
+  const queries: unknown[] = Array.isArray(body)
+    ? body.map((op) => op?.query)
+    : [body?.query];
+  return queries.some((q) => typeof q === 'string' && selectsAuthMutation(q));
 };
 
 app.use('/graphql', (req, res, next) => {
@@ -157,6 +197,44 @@ app.post('/auth/logout', async (req, res) => {
 
 app.use('/auth', oauthRouter);
 
+// Bound total query cost (field count) so a syntactically shallow but very wide
+// query can't be used to amplify load past the depth limit. Implemented as a
+// validation rule (Apollo's own graphql instance) rather than a separate cost
+// library to avoid pulling in a second graphql realm.
+const MAX_QUERY_COMPLEXITY = 1000;
+
+const complexityLimit =
+  (max: number) =>
+  (context: ValidationContext): ASTVisitor => {
+    let fieldCount = 0;
+    return {
+      Field() {
+        fieldCount += 1;
+        if (fieldCount > max) {
+          context.reportError(
+            new GraphQLError(
+              `Query is too complex: exceeds ${max} fields.`,
+              { extensions: { code: 'GRAPHQL_VALIDATION_FAILED' } }
+            )
+          );
+        }
+      },
+    };
+  };
+
+// Client-safe error codes pass through verbatim; anything else (DB errors,
+// unexpected throws) is masked in production so we never leak internals/stack traces.
+const SAFE_ERROR_CODES = new Set([
+  'BAD_USER_INPUT',
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'GRAPHQL_VALIDATION_FAILED',
+  'GRAPHQL_PARSE_FAILED',
+  'PERSISTED_QUERY_NOT_FOUND',
+  'PERSISTED_QUERY_NOT_SUPPORTED',
+]);
+
 const server = new ApolloServer<Context>({
   typeDefs,
   resolvers,
@@ -165,7 +243,18 @@ const server = new ApolloServer<Context>({
   // schema.graphql (see `npm run schema:export`) instead of introspecting the live server.
   introspection: config.isDev,
   plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-  validationRules: [depthLimit(7)],
+  validationRules: [depthLimit(7), complexityLimit(MAX_QUERY_COMPLEXITY)],
+  formatError: (formattedError) => {
+    if (config.isDev) return formattedError;
+    const code = formattedError.extensions?.code;
+    if (typeof code === 'string' && SAFE_ERROR_CODES.has(code)) {
+      return { message: formattedError.message, extensions: { code } };
+    }
+    return {
+      message: 'Internal server error',
+      extensions: { code: 'INTERNAL_SERVER_ERROR' },
+    };
+  },
 });
 
 const startServer = async () => {

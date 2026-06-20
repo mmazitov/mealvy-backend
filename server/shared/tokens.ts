@@ -49,9 +49,16 @@ export const createTokenPair = async (
   refreshToken: await createRefreshToken(userId, prisma),
 });
 
+// Pin the algorithm so a forged token can't request a weaker/none alg on verify
+const VERIFY_OPTIONS: jwt.VerifyOptions = { algorithms: ['HS256'] };
+
 export const verifyAccessToken = (token: string): string | undefined => {
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as Partial<TokenPayload>;
+    const payload = jwt.verify(
+      token,
+      config.jwtSecret,
+      VERIFY_OPTIONS,
+    ) as Partial<TokenPayload>;
     return payload.type === 'access' ? payload.userId : undefined;
   } catch {
     return undefined;
@@ -68,7 +75,11 @@ export const verifyRefreshToken = async (
 ): Promise<string | undefined> => {
   let payload: Partial<TokenPayload>;
   try {
-    payload = jwt.verify(token, config.jwtSecret) as Partial<TokenPayload>;
+    payload = jwt.verify(
+      token,
+      config.jwtSecret,
+      VERIFY_OPTIONS,
+    ) as Partial<TokenPayload>;
   } catch {
     return undefined;
   }
@@ -92,4 +103,13 @@ export const revokeRefreshToken = async (
     .catch(() => {
       // Already revoked or never stored — nothing to do
     });
+};
+
+// Invalidate every session for a user (e.g. on password change) so a stolen
+// refresh token can't outlive the credential change
+export const revokeAllRefreshTokens = async (
+  userId: string,
+  prisma: PrismaClient,
+): Promise<void> => {
+  await prisma.refreshToken.deleteMany({ where: { userId } });
 };
