@@ -3,7 +3,11 @@ import bcrypt from 'bcrypt';
 import { Response } from 'express';
 import { GraphQLError } from 'graphql';
 import { clearAuthCookies, setAuthCookies } from '../shared/cookieHelpers.js';
-import { createTokenPair, revokeRefreshToken } from '../shared/tokens.js';
+import {
+	createTokenPair,
+	revokeAllRefreshTokens,
+	revokeRefreshToken,
+} from '../shared/tokens.js';
 
 interface RegisterInput {
 	email: string;
@@ -297,6 +301,10 @@ export class UserService {
 			where: { id: userId },
 			data: { password: hashed },
 		});
+
+		// Force re-login on every device: a previously stolen refresh token must
+		// not survive the password change
+		await revokeAllRefreshTokens(userId, prisma);
 
 		return true;
 	}
