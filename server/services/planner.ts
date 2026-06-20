@@ -49,18 +49,24 @@ export class PlannerService {
 		});
 
 		await Promise.all(
-			items.map((item) => {
+			items.map(async (item) => {
 				if (item.id) {
-					return prisma.plannerItem.update({
-						where: { id: item.id },
+					// Scope the update to the owner so a user can't overwrite another user's item by id
+					const { count } = await prisma.plannerItem.updateMany({
+						where: { id: item.id, userId },
 						data: {
 							dishId: item.dishId,
 							date: new Date(item.date),
 							mealTime: item.mealTime,
 						},
 					});
+					if (count === 0) {
+						throw new GraphQLError('Planner item not found', {
+							extensions: { code: 'NOT_FOUND' },
+						});
+					}
 				} else {
-					return prisma.plannerItem.create({
+					await prisma.plannerItem.create({
 						data: {
 							userId,
 							dishId: item.dishId,
