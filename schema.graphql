@@ -1,0 +1,199 @@
+type Query {
+  _empty: String
+  me: User
+  favoriteProducts: [Product!]!
+  favoriteDishes: [Dish!]!
+  product(id: ID!): Product
+  productByName(name: String!): Product
+  products(category: String, search: String, limit: Int, offset: Int): [Product!]!
+  dish(id: ID!): Dish
+  dishByName(name: String!): Dish
+  dishes(category: String, search: String, limit: Int, offset: Int): [Dish!]!
+  getPlannerItems(startDate: String!, endDate: String!): [PlannerItem!]!
+  savedMenus: [SavedMenu!]!
+  savedMenu(id: ID!): SavedMenu
+  familyMembers: [FamilyMember!]!
+}
+
+type Mutation {
+  _empty: String
+  register(email: String!, password: String!, name: String): AuthPayload!
+  login(email: String!, password: String!): AuthPayload!
+  logout: Boolean!
+  updateProfile(name: String, phone: String, avatar: String, diet: String, allergy: [String!], dislike: [String!]): User!
+  changePassword(currentPassword: String!, newPassword: String!): Boolean!
+  addToFavoritesProduct(productId: ID!): User!
+  removeFromFavoritesProduct(productId: ID!): User!
+  addToFavoritesDish(dishId: ID!): User!
+  removeFromFavoritesDish(dishId: ID!): User!
+  addToFavoritesMenu(menuId: ID!): User!
+  removeFromFavoritesMenu(menuId: ID!): User!
+  createProduct(name: String!, category: String, imageUrl: String, calories: Int, fat: Float, carbs: Float, protein: Float, description: String): Product!
+  updateProduct(id: ID!, name: String, category: String, imageUrl: String, calories: Int, fat: Float, carbs: Float, protein: Float, description: String): Product!
+  deleteProduct(id: ID!): Product!
+  createDish(name: String!, category: String, imageUrl: String, ingredients: [IngredientInput!]!, instructions: [String!]!, prepTime: Int, servings: Int, calories: Int, protein: Float, fat: Float, carbs: Float, description: String): Dish!
+  updateDish(id: ID!, name: String, category: String, imageUrl: String, ingredients: [IngredientInput!], instructions: [String!], prepTime: Int, servings: Int, calories: Int, protein: Float, fat: Float, carbs: Float, description: String): Dish!
+  deleteDish(id: ID!): Dish!
+  savePlanner(items: [PlannerItemInput!]!, startDate: String!, endDate: String!): Boolean!
+  saveMenuPlan(name: String!, startDate: String!, endDate: String!, weekNumber: Int!): SavedMenu!
+  updateSavedMenu(id: ID!, name: String!, startDate: String!, endDate: String!): SavedMenu!
+  deleteSavedMenu(id: ID!): SavedMenu!
+  duplicateSavedMenu(id: ID!): SavedMenu!
+  applyTemplateToPlanner(savedMenuId: ID!, targetStartDate: String!): Boolean!
+  inviteFamilyMember(email: String!): FamilyMember!
+  acceptFamilyInvitation(invitationId: ID!): FamilyMember!
+  removeFamilyMember(memberId: ID!): FamilyMember!
+  cancelFamilyInvitation(invitationId: ID!): FamilyMember!
+}
+
+type User {
+  id: ID!
+  role: String
+  email: String
+  name: String
+  avatar: String
+  phone: String
+  diet: String
+  allergy: [String!]!
+  dislike: [String!]!
+  createdAt: String!
+  updatedAt: String!
+  favoriteProducts: [Product!]!
+  favoriteDishes: [Dish!]!
+  favoriteMenus: [SavedMenu!]!
+  dishesCount: Int!
+  productsCount: Int!
+}
+
+type AuthPayload {
+  user: User!
+}
+
+type Product {
+  id: ID!
+  name: String!
+  category: String
+  imageUrl: String
+  calories: Int
+  fat: Float
+  carbs: Float
+  protein: Float
+  description: String
+  createdAt: String!
+  updatedAt: String!
+  userId: ID!
+  isFavorite: Boolean
+}
+
+type Ingredient {
+  name: String!
+  amount: String!
+  productId: ID
+  product: Product
+}
+
+input IngredientInput {
+  name: String!
+  amount: String!
+  productId: ID
+}
+
+type Dish {
+  id: ID!
+  name: String!
+  category: String
+  imageUrl: String
+  ingredients: [Ingredient!]!
+  instructions: [String!]!
+  prepTime: Int
+  servings: Int
+  calories: Int
+  protein: Float
+  fat: Float
+  carbs: Float
+  description: String
+  createdAt: String!
+  updatedAt: String!
+  userId: ID!
+  isFavorite: Boolean
+}
+
+enum MealTime {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+type PlannerItem {
+  id: ID!
+  userId: ID!
+  dishId: ID!
+  dish: Dish!
+  date: String!
+  mealTime: MealTime!
+  createdAt: String!
+}
+
+input PlannerItemInput {
+  id: ID
+  dishId: ID!
+  date: String!
+  mealTime: MealTime!
+}
+
+type SavedMenuDish {
+  id: ID!
+  name: String!
+  imageUrl: String
+  category: String
+  calories: Int
+  protein: Float
+  fat: Float
+  carbs: Float
+}
+
+type SavedMenuItem {
+  id: ID!
+  dishId: ID!
+  date: String!
+  mealTime: MealTime!
+  dish: SavedMenuDish!
+}
+
+type SavedMenu {
+  id: ID!
+  name: String!
+  startDate: String!
+  endDate: String!
+  weekNumber: Int!
+  totalDishes: Int!
+  totalCalories: Int!
+  totalProtein: Float!
+  totalFat: Float!
+  totalCarbs: Float!
+  isFavorite: Boolean!
+  createdAt: String!
+  updatedAt: String!
+  items: [SavedMenuItem!]!
+}
+
+enum FamilyMemberStatus {
+  OWNER
+  MEMBER
+  PENDING
+}
+
+type FamilyMember {
+  id: ID!
+  email: String!
+  name: String
+  status: FamilyMemberStatus!
+  sharedMenusCount: Int
+  invitedAt: String
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+}

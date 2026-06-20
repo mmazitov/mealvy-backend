@@ -350,6 +350,23 @@ export class UserService {
 		menuId: string,
 		prisma: PrismaClient,
 	) {
+		// Saved menus are owner-private (see SavedMenuService.getSavedMenu); favoriting another
+		// user's menu would expose it via `me { favoriteMenus }`, bypassing that ownership check.
+		const menu = await prisma.savedMenu.findUnique({
+			where: { id: menuId },
+			select: { userId: true },
+		});
+		if (!menu) {
+			throw new GraphQLError('Saved menu not found', {
+				extensions: { code: 'NOT_FOUND' },
+			});
+		}
+		if (menu.userId !== userId) {
+			throw new GraphQLError('Not authorized to favorite this menu', {
+				extensions: { code: 'FORBIDDEN' },
+			});
+		}
+
 		return prisma.user.update({
 			where: { id: userId },
 			data: { favoriteMenus: { connect: { id: menuId } } },
