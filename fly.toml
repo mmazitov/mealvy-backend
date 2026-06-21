@@ -15,6 +15,9 @@ primary_region = 'ams'
   # transport (absent from production deps). Set here, not only in the Dockerfile,
   # so it applies as machine config on deploy regardless of image build/caching.
   NODE_ENV = "production"
+  # Public base URL of this API — used to build absolute links in emails (e.g. the
+  # email-verification link). Must match the host Google OAuth callbacks use.
+  API_URL = "https://api.mealvy.app"
 
 [http_service]
   internal_port = 8080

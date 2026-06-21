@@ -5,6 +5,7 @@ export const userTypeDefs = gql`
     id: ID!
     role: String
     email: String
+    isEmailVerified: Boolean!
     name: String
     avatar: String
     phone: String
@@ -44,6 +45,7 @@ export const userTypeDefs = gql`
       dislike: [String!]
     ): User!
     changePassword(currentPassword: String!, newPassword: String!): Boolean!
+    resendVerificationEmail: Boolean!
     addToFavoritesProduct(productId: ID!): User!
     removeFromFavoritesProduct(productId: ID!): User!
     addToFavoritesDish(dishId: ID!): User!
