@@ -15,14 +15,23 @@ async function findOrCreateUserFromOAuth(
 	// verified the address (attacker registers victim's email at the provider)
 	isEmailVerified: boolean,
 ) {
-	let account = await prisma.account.findUnique({
+	const account = await prisma.account.findUnique({
 		where: {
 			provider_providerAccountId: { provider, providerAccountId: profileId },
 		},
-		include: { user: true },
 	});
 
-	if (account) return account.user;
+	if (account) {
+		const linkedUser = await prisma.user.findUnique({
+			where: { id: account.userId },
+		});
+		if (linkedUser) return linkedUser;
+
+		// Orphaned account: its user was deleted (MongoDB doesn't cascade on
+		// out-of-Prisma deletes). Drop the dangling row and re-link below instead
+		// of crashing on the required `user` relation.
+		await prisma.account.delete({ where: { id: account.id } });
+	}
 
 	const email = profile.emails?.[0]?.value;
 
