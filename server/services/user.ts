@@ -10,6 +10,7 @@ import {
 	revokeRefreshToken,
 } from '../shared/tokens.js';
 import { EmailVerificationService } from './emailVerification.js';
+import { FamilyService } from './family.js';
 
 interface RegisterInput {
 	email: string;
@@ -211,7 +212,10 @@ export class UserService {
 
 		// Send verification in the background so registration isn't blocked on SMTP
 		EmailVerificationService.createAndSend(user, prisma).catch((err) =>
-			logger.error({ err, userId: user.id }, 'Failed to send verification email'),
+			logger.error(
+				{ err, userId: user.id },
+				'Failed to send verification email',
+			),
 		);
 
 		return { user };
@@ -379,8 +383,9 @@ export class UserService {
 		menuId: string,
 		prisma: PrismaClient,
 	) {
-		// Saved menus are owner-private (see SavedMenuService.getSavedMenu); favoriting another
-		// user's menu would expose it via `me { favoriteMenus }`, bypassing that ownership check.
+		// Saved menus are owner-private (see SavedMenuService.getSavedMenu); favoriting a
+		// menu exposes it via `me { favoriteMenus }`, so it's restricted to the owner and
+		// their family members — the same audience allowed to view it in the Shared tab.
 		const menu = await prisma.savedMenu.findUnique({
 			where: { id: menuId },
 			select: { userId: true },
@@ -391,9 +396,16 @@ export class UserService {
 			});
 		}
 		if (menu.userId !== userId) {
-			throw new GraphQLError('Not authorized to favorite this menu', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+			const isFamily = await FamilyService.isFamilyMember(
+				userId,
+				menu.userId,
+				prisma,
+			);
+			if (!isFamily) {
+				throw new GraphQLError('Not authorized to favorite this menu', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
 		return prisma.user.update({

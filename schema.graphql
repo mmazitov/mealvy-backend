@@ -11,6 +11,7 @@ type Query {
   dishes(category: String, search: String, limit: Int, offset: Int): [Dish!]!
   getPlannerItems(startDate: String!, endDate: String!): [PlannerItem!]!
   savedMenus: [SavedMenu!]!
+  sharedMenus: [SavedMenu!]!
   savedMenu(id: ID!): SavedMenu
   familyMembers: [FamilyMember!]!
 }
@@ -178,6 +179,9 @@ type SavedMenu {
   createdAt: String!
   updatedAt: String!
   items: [SavedMenuItem!]!
+  ownerId: ID
+  ownerName: String
+  ownerEmail: String
 }
 
 enum FamilyMemberStatus {

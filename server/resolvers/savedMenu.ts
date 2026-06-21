@@ -15,10 +15,14 @@ export const savedMenuResolvers = {
 			const userId = requireAuth(context);
 			return SavedMenuService.getSavedMenus(userId, context.prisma);
 		},
+		sharedMenus: async (_parent: unknown, _args: unknown, context: Context) => {
+			const userId = requireAuth(context);
+			return SavedMenuService.getSharedMenus(userId, context.prisma);
+		},
 		savedMenu: async (
 			_parent: unknown,
 			args: { id: string },
-			context: Context
+			context: Context,
 		) => {
 			const userId = requireAuth(context);
 			return SavedMenuService.getSavedMenu(args.id, userId, context.prisma);
@@ -33,7 +37,7 @@ export const savedMenuResolvers = {
 				endDate: string;
 				weekNumber: number;
 			},
-			context: Context
+			context: Context,
 		) => {
 			const userId = requireAuth(context);
 			return SavedMenuService.saveMenuPlan(
@@ -42,13 +46,13 @@ export const savedMenuResolvers = {
 				args.startDate,
 				args.endDate,
 				args.weekNumber,
-				context.prisma
+				context.prisma,
 			);
 		},
 		deleteSavedMenu: async (
 			_parent: unknown,
 			args: { id: string },
-			context: Context
+			context: Context,
 		) => {
 			const userId = requireAuth(context);
 			return SavedMenuService.deleteSavedMenu(args.id, userId, context.prisma);
@@ -56,10 +60,14 @@ export const savedMenuResolvers = {
 		duplicateSavedMenu: async (
 			_parent: unknown,
 			args: { id: string },
-			context: Context
+			context: Context,
 		) => {
 			const userId = requireAuth(context);
-			return SavedMenuService.duplicateSavedMenu(args.id, userId, context.prisma);
+			return SavedMenuService.duplicateSavedMenu(
+				args.id,
+				userId,
+				context.prisma,
+			);
 		},
 		updateSavedMenu: async (
 			_parent: unknown,
@@ -69,7 +77,7 @@ export const savedMenuResolvers = {
 				startDate: string;
 				endDate: string;
 			},
-			context: Context
+			context: Context,
 		) => {
 			const userId = requireAuth(context);
 			return SavedMenuService.updateSavedMenu(
@@ -78,20 +86,20 @@ export const savedMenuResolvers = {
 				args.name,
 				args.startDate,
 				args.endDate,
-				context.prisma
+				context.prisma,
 			);
 		},
 		applyTemplateToPlanner: async (
 			_parent: unknown,
 			args: { savedMenuId: string; targetStartDate: string },
-			context: Context
+			context: Context,
 		) => {
 			const userId = requireAuth(context);
 			return SavedMenuService.applyTemplateToPlanner(
 				userId,
 				args.savedMenuId,
 				args.targetStartDate,
-				context.prisma
+				context.prisma,
 			);
 		},
 	},

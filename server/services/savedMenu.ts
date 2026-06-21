@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 import { formatDateToISO } from '../shared/dateHelpers.js';
+import { FamilyService } from './family.js';
 
 export interface DishSummary {
 	id: string;
@@ -61,6 +62,59 @@ export class SavedMenuService {
 		return savedMenus.map((menu) => this.computeMenuTotals(menu));
 	}
 
+	// Menus owned by the current user's family members, surfaced in the "Shared" tab.
+	static async getSharedMenus(userId: string, prisma: PrismaClient) {
+		const relations = await prisma.familyMember.findMany({
+			where: { userId },
+			select: { memberId: true },
+		});
+
+		const memberIds = relations.map((rel) => rel.memberId);
+		if (memberIds.length === 0) return [];
+
+		const sharedMenus = await prisma.savedMenu.findMany({
+			where: { userId: { in: memberIds } },
+			select: {
+				id: true,
+				name: true,
+				startDate: true,
+				endDate: true,
+				weekNumber: true,
+				createdAt: true,
+				updatedAt: true,
+				favoriteByIds: true,
+				user: { select: { id: true, name: true, email: true } },
+				items: {
+					include: {
+						dish: {
+							select: {
+								id: true,
+								name: true,
+								imageUrl: true,
+								category: true,
+								calories: true,
+								protein: true,
+								fat: true,
+								carbs: true,
+							},
+						},
+					},
+					orderBy: [{ date: 'asc' }, { mealTime: 'asc' }],
+				},
+			},
+			orderBy: { createdAt: 'desc' },
+		});
+
+		return sharedMenus.map(({ user, ...menu }) =>
+			this.computeMenuTotals({
+				...menu,
+				ownerId: user.id,
+				ownerName: user.name,
+				ownerEmail: user.email,
+			}),
+		);
+	}
+
 	static async getSavedMenu(id: string, userId: string, prisma: PrismaClient) {
 		const savedMenu = await prisma.savedMenu.findUnique({
 			where: { id },
@@ -74,6 +128,7 @@ export class SavedMenuService {
 				createdAt: true,
 				updatedAt: true,
 				favoriteByIds: true,
+				user: { select: { id: true, name: true, email: true } },
 				items: {
 					include: {
 						dish: {
@@ -100,13 +155,27 @@ export class SavedMenuService {
 			});
 		}
 
-		if (savedMenu.userId !== userId) {
-			throw new GraphQLError('Not authorized to access this menu', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+		const { user, ...menu } = savedMenu;
+
+		if (menu.userId !== userId) {
+			const isFamily = await FamilyService.isFamilyMember(
+				userId,
+				menu.userId,
+				prisma,
+			);
+			if (!isFamily) {
+				throw new GraphQLError('Not authorized to access this menu', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
-		return this.computeMenuTotals(savedMenu);
+		return this.computeMenuTotals({
+			...menu,
+			ownerId: user.id,
+			ownerName: user.name,
+			ownerEmail: user.email,
+		});
 	}
 
 	static async saveMenuPlan(
@@ -115,7 +184,7 @@ export class SavedMenuService {
 		startDate: string,
 		endDate: string,
 		weekNumber: number,
-		prisma: PrismaClient
+		prisma: PrismaClient,
 	) {
 		const start = new Date(startDate);
 		const end = new Date(endDate);
@@ -145,9 +214,12 @@ export class SavedMenuService {
 		});
 
 		if (plannerItems.length === 0) {
-			throw new GraphQLError('No planner items found in the specified date range', {
-				extensions: { code: 'BAD_USER_INPUT' },
-			});
+			throw new GraphQLError(
+				'No planner items found in the specified date range',
+				{
+					extensions: { code: 'BAD_USER_INPUT' },
+				},
+			);
 		}
 
 		const existingMenu = await prisma.savedMenu.findFirst({
@@ -159,7 +231,7 @@ export class SavedMenuService {
 
 		const [savedMenu, savedItems] = await prisma.$transaction(async (tx) => {
 			let menu;
-			
+
 			if (existingMenu) {
 				await tx.plannerItem.updateMany({
 					where: { savedMenuId: existingMenu.id },
@@ -221,7 +293,11 @@ export class SavedMenuService {
 		return this.computeMenuTotals(menuWithItems);
 	}
 
-	static async deleteSavedMenu(id: string, userId: string, prisma: PrismaClient) {
+	static async deleteSavedMenu(
+		id: string,
+		userId: string,
+		prisma: PrismaClient,
+	) {
 		const savedMenu = await prisma.savedMenu.findUnique({
 			where: { id },
 			include: {
@@ -269,7 +345,11 @@ export class SavedMenuService {
 		return this.computeMenuTotals(savedMenu);
 	}
 
-	static async duplicateSavedMenu(id: string, userId: string, prisma: PrismaClient) {
+	static async duplicateSavedMenu(
+		id: string,
+		userId: string,
+		prisma: PrismaClient,
+	) {
 		const originalMenu = await prisma.savedMenu.findUnique({
 			where: { id },
 			include: {
@@ -298,10 +378,19 @@ export class SavedMenuService {
 			});
 		}
 
+		// Family members may copy a shared menu into their own collection; the copy
+		// is owned by the duplicating user, so no further ownership is granted.
 		if (originalMenu.userId !== userId) {
-			throw new GraphQLError('Not authorized to duplicate this menu', {
-				extensions: { code: 'FORBIDDEN' },
-			});
+			const isFamily = await FamilyService.isFamilyMember(
+				userId,
+				originalMenu.userId,
+				prisma,
+			);
+			if (!isFamily) {
+				throw new GraphQLError('Not authorized to duplicate this menu', {
+					extensions: { code: 'FORBIDDEN' },
+				});
+			}
 		}
 
 		const duplicatedMenu = await prisma.savedMenu.create({
@@ -357,7 +446,7 @@ export class SavedMenuService {
 		name: string,
 		startDate: string,
 		endDate: string,
-		prisma: PrismaClient
+		prisma: PrismaClient,
 	) {
 		const savedMenu = await prisma.savedMenu.findUnique({
 			where: { id },
@@ -398,7 +487,7 @@ export class SavedMenuService {
 
 		const originalStart = savedMenu.startDate;
 		const daysDiff = Math.floor(
-			(start.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24)
+			(start.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24),
 		);
 
 		const updatedMenu = await prisma.$transaction(async (tx) => {
@@ -420,7 +509,7 @@ export class SavedMenuService {
 							where: { id: item.id },
 							data: { date: newDate },
 						});
-					})
+					}),
 				);
 			}
 
@@ -456,7 +545,7 @@ export class SavedMenuService {
 		userId: string,
 		savedMenuId: string,
 		targetStartDate: string,
-		prisma: PrismaClient
+		prisma: PrismaClient,
 	) {
 		const savedMenu = await prisma.savedMenu.findUnique({
 			where: { id: savedMenuId },
@@ -482,7 +571,7 @@ export class SavedMenuService {
 		const originalStart = savedMenu.startDate;
 		const targetStart = new Date(targetStartDate);
 		const daysDiff = Math.floor(
-			(targetStart.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24)
+			(targetStart.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24),
 		);
 
 		const newItems = savedMenu.items.map((item) => {
@@ -524,19 +613,19 @@ export class SavedMenuService {
 		const totalDishes = menu.items.length;
 		const totalCalories = menu.items.reduce(
 			(sum, item) => sum + (item.dish.calories || 0),
-			0
+			0,
 		);
 		const totalProtein = menu.items.reduce(
 			(sum, item) => sum + (item.dish.protein || 0),
-			0
+			0,
 		);
 		const totalFat = menu.items.reduce(
 			(sum, item) => sum + (item.dish.fat || 0),
-			0
+			0,
 		);
 		const totalCarbs = menu.items.reduce(
 			(sum, item) => sum + (item.dish.carbs || 0),
-			0
+			0,
 		);
 
 		return {

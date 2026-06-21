@@ -35,10 +35,15 @@ export const savedMenuTypeDefs = gql`
 		createdAt: String!
 		updatedAt: String!
 		items: [SavedMenuItem!]!
+		# Populated only for menus owned by someone else (Shared tab / detail view).
+		ownerId: ID
+		ownerName: String
+		ownerEmail: String
 	}
 
 	extend type Query {
 		savedMenus: [SavedMenu!]!
+		sharedMenus: [SavedMenu!]!
 		savedMenu(id: ID!): SavedMenu
 	}
 

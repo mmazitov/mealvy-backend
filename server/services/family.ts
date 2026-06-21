@@ -5,337 +5,358 @@ import { logger } from '../shared/logger.js';
 import { EmailService } from './email.js';
 
 export class FamilyService {
-  static async getFamilyMembers(userId: string, prisma: PrismaClient) {
-    const [familyRelations, pendingInvitations, currentUser] = await Promise.all([
-      prisma.familyMember.findMany({
-        where: { userId },
-        include: {
-          member: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              _count: { select: { savedMenus: true } },
-            },
-          },
-        },
-      }),
-      prisma.familyInvitation.findMany({
-        where: {
-          inviterId: userId,
-          status: InvitationStatus.PENDING,
-          expiresAt: { gte: new Date() },
-        },
-      }),
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          _count: { select: { savedMenus: true } },
-        },
-      }),
-    ]);
+	// Family relations are stored bidirectionally (a row is created in both
+	// directions when an invitation is accepted), so a single lookup suffices.
+	static async isFamilyMember(
+		userId: string,
+		otherUserId: string,
+		prisma: PrismaClient,
+	): Promise<boolean> {
+		const relation = await prisma.familyMember.findUnique({
+			where: { userId_memberId: { userId, memberId: otherUserId } },
+			select: { id: true },
+		});
+		return relation !== null;
+	}
 
-    if (!currentUser) {
-      throw new GraphQLError('User not found', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+	static async getFamilyMembers(userId: string, prisma: PrismaClient) {
+		const [familyRelations, pendingInvitations, currentUser] =
+			await Promise.all([
+				prisma.familyMember.findMany({
+					where: { userId },
+					include: {
+						member: {
+							select: {
+								id: true,
+								email: true,
+								name: true,
+								_count: { select: { savedMenus: true } },
+							},
+						},
+					},
+				}),
+				prisma.familyInvitation.findMany({
+					where: {
+						inviterId: userId,
+						status: InvitationStatus.PENDING,
+						expiresAt: { gte: new Date() },
+					},
+				}),
+				prisma.user.findUnique({
+					where: { id: userId },
+					select: {
+						id: true,
+						email: true,
+						name: true,
+						_count: { select: { savedMenus: true } },
+					},
+				}),
+			]);
 
-    // Build response with owner (current user) + members + pending
-    const members = [
-      {
-        id: currentUser.id,
-        email: currentUser.email,
-        name: currentUser.name,
-        status: 'OWNER',
-        sharedMenusCount: currentUser._count.savedMenus,
-        invitedAt: null,
-      },
-      ...familyRelations.map((rel) => ({
-        id: rel.member.id,
-        email: rel.member.email,
-        name: rel.member.name,
-        status: 'MEMBER',
-        sharedMenusCount: rel.member._count.savedMenus,
-        invitedAt: rel.createdAt.toISOString(),
-      })),
-      ...pendingInvitations.map((inv) => ({
-        id: inv.id,
-        email: inv.inviteeEmail,
-        name: null,
-        status: 'PENDING',
-        sharedMenusCount: 0,
-        invitedAt: inv.createdAt.toISOString(),
-      })),
-    ];
+		if (!currentUser) {
+			throw new GraphQLError('User not found', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    return members;
-  }
+		// Build response with owner (current user) + members + pending
+		const members = [
+			{
+				id: currentUser.id,
+				email: currentUser.email,
+				name: currentUser.name,
+				status: 'OWNER',
+				sharedMenusCount: currentUser._count.savedMenus,
+				invitedAt: null,
+			},
+			...familyRelations.map((rel) => ({
+				id: rel.member.id,
+				email: rel.member.email,
+				name: rel.member.name,
+				status: 'MEMBER',
+				sharedMenusCount: rel.member._count.savedMenus,
+				invitedAt: rel.createdAt.toISOString(),
+			})),
+			...pendingInvitations.map((inv) => ({
+				id: inv.id,
+				email: inv.inviteeEmail,
+				name: null,
+				status: 'PENDING',
+				sharedMenusCount: 0,
+				invitedAt: inv.createdAt.toISOString(),
+			})),
+		];
 
-  static async inviteFamilyMember(
-    userId: string,
-    email: string,
-    prisma: PrismaClient,
-  ) {
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new GraphQLError('Invalid email format', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		return members;
+	}
 
-    // Check if inviting self
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, emailVerified: true, name: true },
-    });
+	static async inviteFamilyMember(
+		userId: string,
+		email: string,
+		prisma: PrismaClient,
+	) {
+		// Validate email format
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(email)) {
+			throw new GraphQLError('Invalid email format', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    if (currentUser?.email === email) {
-      throw new GraphQLError('Cannot invite yourself', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		// Check if inviting self
+		const currentUser = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { email: true, emailVerified: true, name: true },
+		});
 
-    // Require a verified email before inviting others — an unverified account may
-    // not belong to the person operating it (impersonation via family invites)
-    if (currentUser?.emailVerified !== true) {
-      throw new GraphQLError(
-        'Please verify your email before inviting family members',
-        { extensions: { code: 'FORBIDDEN' } },
-      );
-    }
+		if (currentUser?.email === email) {
+			throw new GraphQLError('Cannot invite yourself', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    // Check if already a family member
-    const inviteeUser = await prisma.user.findUnique({
-      where: { email },
-    });
+		// Require a verified email before inviting others — an unverified account may
+		// not belong to the person operating it (impersonation via family invites)
+		if (currentUser?.emailVerified !== true) {
+			throw new GraphQLError(
+				'Please verify your email before inviting family members',
+				{ extensions: { code: 'FORBIDDEN' } },
+			);
+		}
 
-    if (inviteeUser) {
-      const existingMember = await prisma.familyMember.findUnique({
-        where: {
-          userId_memberId: {
-            userId,
-            memberId: inviteeUser.id,
-          },
-        },
-      });
+		// Check if already a family member
+		const inviteeUser = await prisma.user.findUnique({
+			where: { email },
+		});
 
-      if (existingMember) {
-        throw new GraphQLError('User is already a family member', {
-          extensions: { code: 'BAD_USER_INPUT' },
-        });
-      }
-    }
+		if (inviteeUser) {
+			const existingMember = await prisma.familyMember.findUnique({
+				where: {
+					userId_memberId: {
+						userId,
+						memberId: inviteeUser.id,
+					},
+				},
+			});
 
-    // Check for existing pending invitation
-    const existingInvitation = await prisma.familyInvitation.findUnique({
-      where: {
-        inviterId_inviteeEmail: {
-          inviterId: userId,
-          inviteeEmail: email,
-        },
-      },
-    });
+			if (existingMember) {
+				throw new GraphQLError('User is already a family member', {
+					extensions: { code: 'BAD_USER_INPUT' },
+				});
+			}
+		}
 
-    if (existingInvitation && existingInvitation.status === InvitationStatus.PENDING) {
-      throw new GraphQLError('Invitation already sent to this email', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		// Check for existing pending invitation
+		const existingInvitation = await prisma.familyInvitation.findUnique({
+			where: {
+				inviterId_inviteeEmail: {
+					inviterId: userId,
+					inviteeEmail: email,
+				},
+			},
+		});
 
-    // Create invitation (expires in 7 days)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+		if (
+			existingInvitation &&
+			existingInvitation.status === InvitationStatus.PENDING
+		) {
+			throw new GraphQLError('Invitation already sent to this email', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    const invitation = await prisma.familyInvitation.create({
-      data: {
-        inviterId: userId,
-        inviteeEmail: email,
-        expiresAt,
-        status: InvitationStatus.PENDING,
-      },
-    });
+		// Create invitation (expires in 7 days)
+		const expiresAt = new Date();
+		expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // Send invitation email
-    const inviterName = currentUser?.name || currentUser?.email || 'Користувач Mealvy';
-    const invitationLink = `${config.clientUrl}/profile/accept-invitation/${invitation.id}`;
-    
-    // Send email asynchronously (don't wait for it)
-    EmailService.sendFamilyInvitation(email, inviterName, invitationLink).catch((error) => {
-      logger.error({ err: error }, 'Failed to send invitation email');
-    });
+		const invitation = await prisma.familyInvitation.create({
+			data: {
+				inviterId: userId,
+				inviteeEmail: email,
+				expiresAt,
+				status: InvitationStatus.PENDING,
+			},
+		});
 
-    return {
-      id: invitation.id,
-      email: invitation.inviteeEmail,
-      name: null,
-      status: 'PENDING',
-      invitedAt: invitation.createdAt.toISOString(),
-    };
-  }
+		// Send invitation email
+		const inviterName =
+			currentUser?.name || currentUser?.email || 'Користувач Mealvy';
+		const invitationLink = `${config.clientUrl}/profile/accept-invitation/${invitation.id}`;
 
-  static async removeFamilyMember(
-    userId: string,
-    memberId: string,
-    prisma: PrismaClient,
-  ) {
-    const familyMember = await prisma.familyMember.findUnique({
-      where: {
-        userId_memberId: {
-          userId,
-          memberId,
-        },
-      },
-    });
+		// Send email asynchronously (don't wait for it)
+		EmailService.sendFamilyInvitation(email, inviterName, invitationLink).catch(
+			(error) => {
+				logger.error({ err: error }, 'Failed to send invitation email');
+			},
+		);
 
-    if (!familyMember) {
-      throw new GraphQLError('Family member not found', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		return {
+			id: invitation.id,
+			email: invitation.inviteeEmail,
+			name: null,
+			status: 'PENDING',
+			invitedAt: invitation.createdAt.toISOString(),
+		};
+	}
 
-    await prisma.familyMember.delete({
-      where: {
-        userId_memberId: {
-          userId,
-          memberId,
-        },
-      },
-    });
+	static async removeFamilyMember(
+		userId: string,
+		memberId: string,
+		prisma: PrismaClient,
+	) {
+		const familyMember = await prisma.familyMember.findUnique({
+			where: {
+				userId_memberId: {
+					userId,
+					memberId,
+				},
+			},
+		});
 
-    return { id: memberId };
-  }
+		if (!familyMember) {
+			throw new GraphQLError('Family member not found', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-  static async acceptFamilyInvitation(
-    userId: string,
-    invitationId: string,
-    prisma: PrismaClient,
-  ) {
-    const invitation = await prisma.familyInvitation.findUnique({
-      where: { id: invitationId },
-      include: {
-        inviter: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-      },
-    });
+		await prisma.familyMember.delete({
+			where: {
+				userId_memberId: {
+					userId,
+					memberId,
+				},
+			},
+		});
 
-    if (!invitation) {
-      throw new GraphQLError('Invitation not found', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		return { id: memberId };
+	}
 
-    if (invitation.status !== InvitationStatus.PENDING) {
-      throw new GraphQLError('Invitation is no longer valid', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+	static async acceptFamilyInvitation(
+		userId: string,
+		invitationId: string,
+		prisma: PrismaClient,
+	) {
+		const invitation = await prisma.familyInvitation.findUnique({
+			where: { id: invitationId },
+			include: {
+				inviter: {
+					select: {
+						id: true,
+						email: true,
+						name: true,
+					},
+				},
+			},
+		});
 
-    if (invitation.expiresAt < new Date()) {
-      await prisma.familyInvitation.update({
-        where: { id: invitationId },
-        data: { status: InvitationStatus.EXPIRED },
-      });
-      throw new GraphQLError('Invitation has expired', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		if (!invitation) {
+			throw new GraphQLError('Invitation not found', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
+		if (invitation.status !== InvitationStatus.PENDING) {
+			throw new GraphQLError('Invitation is no longer valid', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    if (!currentUser) {
-      throw new GraphQLError('User not found', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		if (invitation.expiresAt < new Date()) {
+			await prisma.familyInvitation.update({
+				where: { id: invitationId },
+				data: { status: InvitationStatus.EXPIRED },
+			});
+			throw new GraphQLError('Invitation has expired', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    if (currentUser.email !== invitation.inviteeEmail) {
-      throw new GraphQLError('This invitation is not for your email', {
-        extensions: { code: 'FORBIDDEN' },
-      });
-    }
+		const currentUser = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { email: true },
+		});
 
-    const existingMember = await prisma.familyMember.findUnique({
-      where: {
-        userId_memberId: {
-          userId: invitation.inviterId,
-          memberId: userId,
-        },
-      },
-    });
+		if (!currentUser) {
+			throw new GraphQLError('User not found', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    if (existingMember) {
-      throw new GraphQLError('You are already a family member', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		if (currentUser.email !== invitation.inviteeEmail) {
+			throw new GraphQLError('This invitation is not for your email', {
+				extensions: { code: 'FORBIDDEN' },
+			});
+		}
 
-    await prisma.$transaction([
-      prisma.familyMember.create({
-        data: {
-          userId: invitation.inviterId,
-          memberId: userId,
-        },
-      }),
-      prisma.familyMember.create({
-        data: {
-          userId: userId,
-          memberId: invitation.inviterId,
-        },
-      }),
-      prisma.familyInvitation.update({
-        where: { id: invitationId },
-        data: { status: InvitationStatus.ACCEPTED },
-      }),
-    ]);
+		const existingMember = await prisma.familyMember.findUnique({
+			where: {
+				userId_memberId: {
+					userId: invitation.inviterId,
+					memberId: userId,
+				},
+			},
+		});
 
-    return {
-      id: invitation.inviter.id,
-      email: invitation.inviter.email,
-      name: invitation.inviter.name,
-      status: 'MEMBER',
-      sharedMenusCount: 0,
-      invitedAt: new Date().toISOString(),
-    };
-  }
+		if (existingMember) {
+			throw new GraphQLError('You are already a family member', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-  static async cancelFamilyInvitation(
-    userId: string,
-    invitationId: string,
-    prisma: PrismaClient,
-  ) {
-    const invitation = await prisma.familyInvitation.findUnique({
-      where: { id: invitationId },
-    });
+		await prisma.$transaction([
+			prisma.familyMember.create({
+				data: {
+					userId: invitation.inviterId,
+					memberId: userId,
+				},
+			}),
+			prisma.familyMember.create({
+				data: {
+					userId: userId,
+					memberId: invitation.inviterId,
+				},
+			}),
+			prisma.familyInvitation.update({
+				where: { id: invitationId },
+				data: { status: InvitationStatus.ACCEPTED },
+			}),
+		]);
 
-    if (!invitation) {
-      throw new GraphQLError('Invitation not found', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
+		return {
+			id: invitation.inviter.id,
+			email: invitation.inviter.email,
+			name: invitation.inviter.name,
+			status: 'MEMBER',
+			sharedMenusCount: 0,
+			invitedAt: new Date().toISOString(),
+		};
+	}
 
-    if (invitation.inviterId !== userId) {
-      throw new GraphQLError('Not authorized to cancel this invitation', {
-        extensions: { code: 'FORBIDDEN' },
-      });
-    }
+	static async cancelFamilyInvitation(
+		userId: string,
+		invitationId: string,
+		prisma: PrismaClient,
+	) {
+		const invitation = await prisma.familyInvitation.findUnique({
+			where: { id: invitationId },
+		});
 
-    await prisma.familyInvitation.delete({
-      where: { id: invitationId },
-    });
+		if (!invitation) {
+			throw new GraphQLError('Invitation not found', {
+				extensions: { code: 'BAD_USER_INPUT' },
+			});
+		}
 
-    return { id: invitationId };
-  }
+		if (invitation.inviterId !== userId) {
+			throw new GraphQLError('Not authorized to cancel this invitation', {
+				extensions: { code: 'FORBIDDEN' },
+			});
+		}
+
+		await prisma.familyInvitation.delete({
+			where: { id: invitationId },
+		});
+
+		return { id: invitationId };
+	}
 }
