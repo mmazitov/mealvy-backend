@@ -3,11 +3,13 @@ import bcrypt from 'bcrypt';
 import { Response } from 'express';
 import { GraphQLError } from 'graphql';
 import { clearAuthCookies, setAuthCookies } from '../shared/cookieHelpers.js';
+import { logger } from '../shared/logger.js';
 import {
 	createTokenPair,
 	revokeAllRefreshTokens,
 	revokeRefreshToken,
 } from '../shared/tokens.js';
+import { EmailVerificationService } from './emailVerification.js';
 
 interface RegisterInput {
 	email: string;
@@ -96,6 +98,7 @@ export class UserService {
 				id: true,
 				role: true,
 				email: true,
+				emailVerified: true,
 				name: true,
 				avatar: true,
 				phone: true,
@@ -206,7 +209,25 @@ export class UserService {
 		);
 		setAuthCookies(res, accessToken, refreshToken);
 
+		// Send verification in the background so registration isn't blocked on SMTP
+		EmailVerificationService.createAndSend(user, prisma).catch((err) =>
+			logger.error({ err, userId: user.id }, 'Failed to send verification email'),
+		);
+
 		return { user };
+	}
+
+	// Re-issues a verification email for the logged-in user. No-op (returns true)
+	// if already verified, so it never leaks whether an action was needed.
+	static async resendVerificationEmail(userId: string, prisma: PrismaClient) {
+		const user = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { id: true, email: true, emailVerified: true },
+		});
+		if (user && user.emailVerified !== true) {
+			await EmailVerificationService.createAndSend(user, prisma);
+		}
+		return true;
 	}
 
 	static async login(input: LoginInput, res: Response, prisma: PrismaClient) {

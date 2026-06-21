@@ -91,13 +91,22 @@ export class FamilyService {
     // Check if inviting self
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, name: true },
+      select: { email: true, emailVerified: true, name: true },
     });
 
     if (currentUser?.email === email) {
       throw new GraphQLError('Cannot invite yourself', {
         extensions: { code: 'BAD_USER_INPUT' },
       });
+    }
+
+    // Require a verified email before inviting others — an unverified account may
+    // not belong to the person operating it (impersonation via family invites)
+    if (currentUser?.emailVerified !== true) {
+      throw new GraphQLError(
+        'Please verify your email before inviting family members',
+        { extensions: { code: 'FORBIDDEN' } },
+      );
     }
 
     // Check if already a family member

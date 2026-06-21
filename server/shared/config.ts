@@ -28,6 +28,9 @@ export const config = {
     : required('JWT_SECRET'),
 
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  // Public base URL of this API — used to build absolute links in emails
+  // (e.g. the email-verification link, which must point at the backend)
+  apiUrl: process.env.API_URL || 'http://localhost:4000',
   cookieDomain: process.env.COOKIE_DOMAIN || (isDev ? undefined : '.mealvy.app'),
 
   db: {

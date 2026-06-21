@@ -4,6 +4,7 @@ import { requireAuth } from './utils.js';
 
 export const userResolvers = {
 	User: {
+		isEmailVerified: (parent: any) => parent.emailVerified === true,
 		favoriteProducts: (parent: any) => parent.favoriteProducts ?? [],
 		favoriteDishes: (parent: any) => parent.favoriteDishes ?? [],
 		favoriteMenus: (parent: any) => parent.favoriteMenus ?? [],
@@ -81,6 +82,15 @@ export const userResolvers = {
 				args.newPassword,
 				context.prisma
 			);
+		},
+
+		resendVerificationEmail: async (
+			_parent: unknown,
+			_args: unknown,
+			context: Context
+		) => {
+			const userId = requireAuth(context);
+			return UserService.resendVerificationEmail(userId, context.prisma);
 		},
 
 		addToFavoritesProduct: async (

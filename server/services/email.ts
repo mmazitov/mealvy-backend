@@ -60,6 +60,42 @@ const FAMILY_INVITATION_TEMPLATE = `<!DOCTYPE html>
   </body>
 </html>`;
 
+const EMAIL_VERIFICATION_TEMPLATE = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { background: #e05a29; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+      .button { display: inline-block; background: #e05a29; color: white !important; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+      .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Підтвердження email</h1>
+      </div>
+      <div class="content">
+        <p>Привіт!</p>
+        <p>Дякуємо за реєстрацію в Mealvy. Будь ласка, підтвердіть свою електронну адресу:</p>
+        <p style="text-align: center;">
+          <a href="{{verificationLink}}" class="button">Підтвердити email</a>
+        </p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+          Посилання дійсне протягом 24 годин.
+        </p>
+      </div>
+      <div class="footer">
+        <p>Це автоматичне повідомлення від Mealvy</p>
+        <p>Якщо ви не реєструвалися, просто проігноруйте цей лист.</p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
 export class EmailService {
   private static transporter = nodemailer.createTransport({
     host: config.email.host,
@@ -102,6 +138,21 @@ export class EmailService {
     return this.sendEmail({
       to: inviteeEmail,
       subject,
+      html,
+    });
+  }
+
+  static async sendEmailVerification(to: string, verificationLink: string) {
+    // verificationLink is built from our own config + a random token, never user
+    // input, so no escaping is needed here
+    const html = EMAIL_VERIFICATION_TEMPLATE.replace(
+      /{{verificationLink}}/g,
+      () => verificationLink,
+    );
+
+    return this.sendEmail({
+      to,
+      subject: 'Підтвердіть свою email-адресу в Mealvy',
       html,
     });
   }

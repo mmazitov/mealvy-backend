@@ -43,6 +43,8 @@ async function findOrCreateUserFromOAuth(
 				// Unverified emails are not stored — otherwise this account would
 				// block (or hijack) the real owner's future registration
 				email: isEmailVerified ? email : undefined,
+				// The provider already verified the address, so skip our own flow
+				emailVerified: isEmailVerified,
 				name: profile.displayName || profile.username,
 				...(profile.photos?.[0]?.value && {
 					avatar: profile.photos[0].value,
