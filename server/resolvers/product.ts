@@ -31,6 +31,13 @@ export const productResolvers = {
 		) => {
 			return ProductService.getProducts(args, context.prisma);
 		},
+		productsCount: async (
+			_parent: unknown,
+			args: { category?: string; search?: string; userId?: string },
+			context: Context
+		) => {
+			return ProductService.getProductsCount(args, context.prisma);
+		},
 	},
 	Mutation: {
 		createProduct: async (

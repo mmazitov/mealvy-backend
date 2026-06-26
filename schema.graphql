@@ -6,6 +6,7 @@ type Query {
   product(id: ID!): Product
   productByName(name: String!): Product
   products(category: String, search: String, limit: Int, offset: Int): [Product!]!
+  productsCount(category: String, search: String): Int!
   dish(id: ID!): Dish
   dishByName(name: String!): Dish
   dishes(category: String, search: String, limit: Int, offset: Int): [Dish!]!
