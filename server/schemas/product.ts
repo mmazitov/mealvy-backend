@@ -26,6 +26,7 @@ export const productTypeDefs = gql`
 			limit: Int
 			offset: Int
 		): [Product!]!
+		productsCount(category: String, search: String): Int!
 	}
 
 	extend type Mutation {
