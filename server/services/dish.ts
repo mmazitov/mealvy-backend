@@ -72,7 +72,10 @@ export class DishService {
 			// Unbounded reads are a DoS vector — cap even when no limit is passed
 			take: Math.min(filters.limit || MAX_QUERY_LIMIT, MAX_QUERY_LIMIT),
 			skip: filters.offset || undefined,
-			orderBy: { createdAt: 'desc' },
+			// `id` tiebreaker makes the sort a total order — without it, dishes
+			// sharing a `createdAt` reorder between offset windows and surface on
+			// more than one page.
+			orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
 		});
 	}
 
