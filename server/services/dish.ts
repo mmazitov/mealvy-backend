@@ -68,31 +68,46 @@ export class DishService {
 		prisma: PrismaClient
 	) {
 		return prisma.dish.findMany({
-			where: {
-				...(filters.category && { category: filters.category }),
-				...(filters.search && {
-					OR: [
-						{
-							name: {
-								contains: filters.search,
-								mode: 'insensitive',
-							},
-						},
-						{
-							description: {
-								contains: filters.search,
-								mode: 'insensitive',
-							},
-						},
-					],
-				}),
-				...(filters.userId && { userId: filters.userId }),
-			},
+			where: this.buildWhere(filters),
 			// Unbounded reads are a DoS vector — cap even when no limit is passed
 			take: Math.min(filters.limit || MAX_QUERY_LIMIT, MAX_QUERY_LIMIT),
 			skip: filters.offset || undefined,
 			orderBy: { createdAt: 'desc' },
 		});
+	}
+
+	static async getDishesCount(
+		filters: { category?: string; search?: string; userId?: string },
+		prisma: PrismaClient
+	) {
+		return prisma.dish.count({ where: this.buildWhere(filters) });
+	}
+
+	private static buildWhere(filters: {
+		category?: string;
+		search?: string;
+		userId?: string;
+	}) {
+		return {
+			...(filters.category && { category: filters.category }),
+			...(filters.search && {
+				OR: [
+					{
+						name: {
+							contains: filters.search,
+							mode: 'insensitive' as const,
+						},
+					},
+					{
+						description: {
+							contains: filters.search,
+							mode: 'insensitive' as const,
+						},
+					},
+				],
+			}),
+			...(filters.userId && { userId: filters.userId }),
+		};
 	}
 
 	static async createDish(

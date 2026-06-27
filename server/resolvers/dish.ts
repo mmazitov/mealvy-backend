@@ -27,6 +27,13 @@ export const dishResolvers = {
 		) => {
 			return DishService.getDishes(args, context.prisma);
 		},
+		dishesCount: async (
+			_parent: unknown,
+			args: { category?: string; search?: string; userId?: string },
+			context: Context
+		) => {
+			return DishService.getDishesCount(args, context.prisma);
+		},
 	},
 	Mutation: {
 		createDish: async (

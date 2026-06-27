@@ -43,6 +43,7 @@ export const dishTypeDefs = gql`
 			limit: Int
 			offset: Int
 		): [Dish!]!
+		dishesCount(category: String, search: String): Int!
 	}
 
 	extend type Mutation {

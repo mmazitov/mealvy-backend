@@ -10,6 +10,7 @@ type Query {
   dish(id: ID!): Dish
   dishByName(name: String!): Dish
   dishes(category: String, search: String, limit: Int, offset: Int): [Dish!]!
+  dishesCount(category: String, search: String): Int!
   getPlannerItems(startDate: String!, endDate: String!): [PlannerItem!]!
   savedMenus: [SavedMenu!]!
   sharedMenus: [SavedMenu!]!
